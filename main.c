@@ -53,14 +53,15 @@ int main(int argc, char *args[])
     SDL_Event e;
 
     while (GameRunning) {
-        if (level_n > N_LEVELS) {
-            GameRunning = 0;
+        if (level_n > N_LEVELS)
             break;
-        }
 
         struct level cur_level = get_level(level_n);
         gHeroTexture.direction = RIGHT;
         int LevelRunning = 1;
+
+        int wOffset = (SCREEN_WIDTH - cur_level.w * STEP) / 2;
+        int hOffset = (SCREEN_HEIGHT - cur_level.h * STEP) / 2;
 
         while (LevelRunning) {
             SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
@@ -137,7 +138,7 @@ int main(int argc, char *args[])
             /* NOTE: gDstTexture now is rendered even if it is not needed. */
             /* TODO(Talkasi): rewrite it to be more optimized */
             for (int n = 0; n < cur_level.n_boxes; ++n)
-                renderTexture(&gDstTexture, cur_level.dst[n].x * STEP, cur_level.dst[n].y * STEP, gRenderer);
+                renderTexture(&gDstTexture, cur_level.dst[n].x * STEP + wOffset, cur_level.dst[n].y * STEP + hOffset, gRenderer);
 
             int progress = 0;
             for (int y = 0; y < N_FIELDS_HEIGHT; ++y)
@@ -151,10 +152,10 @@ int main(int argc, char *args[])
                                     continue;
                                 }
 
-                            renderTexture(&gBoxTexture, x * STEP, y * STEP, gRenderer);
+                            renderTexture(&gBoxTexture, x * STEP + wOffset, y * STEP + hOffset, gRenderer);
                             break;
                         case WALL:
-                            renderTexture(&gWallTexture, x * STEP, y * STEP, gRenderer);
+                            renderTexture(&gWallTexture, x * STEP + wOffset, y * STEP + hOffset, gRenderer);
                             break;
                         default:
                             break;
@@ -168,9 +169,9 @@ int main(int argc, char *args[])
             }
 
             if (gHeroTexture.direction == RIGHT)
-                renderTexture(&gHeroTexture.right, cur_level.hero.x * STEP, cur_level.hero.y * STEP, gRenderer);
+                renderTexture(&gHeroTexture.right, cur_level.hero.x * STEP + wOffset, cur_level.hero.y * STEP + hOffset, gRenderer);
             else
-                renderTexture(&gHeroTexture.left, cur_level.hero.x * STEP, cur_level.hero.y * STEP, gRenderer);
+                renderTexture(&gHeroTexture.left, cur_level.hero.x * STEP + wOffset, cur_level.hero.y * STEP + hOffset, gRenderer);
 
             SDL_RenderPresent(gRenderer);
         }

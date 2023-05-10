@@ -22,6 +22,9 @@ struct level get_level(int n)
             cur_level.hero.x = 1;
             cur_level.hero.y = 2;
 
+            cur_level.w = 9;
+            cur_level.h = 9;
+
             cur_level.n_boxes = 3;
 
             cur_level.dst[0].x = 7;
@@ -32,15 +35,6 @@ struct level get_level(int n)
 
             cur_level.dst[2].x = 7;
             cur_level.dst[2].y = 5;
-
-            cur_level.box[0].x = 2;
-            cur_level.box[0].y = 2;
-
-            cur_level.box[1].x = 2;
-            cur_level.box[1].y = 3;
-
-            cur_level.box[2].x = 3;
-            cur_level.box[2].y = 2;
             memcpy(&cur_level.field, &level_01, N_FIELDS_WIDTH * N_FIELDS_HEIGHT * sizeof(int));
         } break;
         case 2: {
@@ -58,6 +52,9 @@ struct level get_level(int n)
 
             cur_level.hero.x = 6;
             cur_level.hero.y = 6;
+
+            cur_level.w = 10;
+            cur_level.h = 9;
 
             cur_level.n_boxes = 4;
 

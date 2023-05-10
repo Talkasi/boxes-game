@@ -14,9 +14,10 @@ struct point {
 
 struct level {
     struct point hero;
+    int w;
+    int h;
     level_field field;
     int n_boxes;
-    struct point box[N_FIELDS_HEIGHT * N_FIELDS_WIDTH];
     struct point dst[N_FIELDS_HEIGHT * N_FIELDS_WIDTH];
 };
 
