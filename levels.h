@@ -4,6 +4,7 @@
 #define N_FIELDS_WIDTH 10
 #define N_FIELDS_HEIGHT 10
 
+#define N_LEVELS 2
 typedef int level_field[N_FIELDS_HEIGHT][N_FIELDS_WIDTH];
 
 struct point {

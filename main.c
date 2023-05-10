@@ -37,6 +37,7 @@ struct LTexture gWallTexture;
 
 int main(int argc, char *args[])
 {
+    /* TODO(Talkasi): add logs */
     if (!init()) {
         printf("Failed to initialize!\n");
         return 1;
@@ -47,119 +48,132 @@ int main(int argc, char *args[])
         return 1;
     }
 
-    struct level cur_level = get_level(1);
-
-    int Running = 1;
-    gHeroTexture.direction = RIGHT;
+    int GameRunning = 1;
+    int level_n = 1;
     SDL_Event e;
 
-    while (Running) {
-        SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-        SDL_RenderClear(gRenderer);
-
-        while (SDL_PollEvent(&e) != 0) {
-            if (e.type == SDL_QUIT) {
-                Running = 0;
-                break;
-            }
-
-            if (e.type == SDL_KEYDOWN)
-                switch (e.key.keysym.sym) {
-                    case SDLK_r:
-                        Running = 0;
-                        break;
-                    case SDLK_UP:
-                        if (cur_level.hero.y != 0) {
-                            if (is_allowed(cur_level.field[cur_level.hero.y - 1][cur_level.hero.x]))
-                                --cur_level.hero.y;
-                            else if (cur_level.hero.y >= 2 &&
-                                     cur_level.field[cur_level.hero.y - 1][cur_level.hero.x] == BOX &&
-                                     is_allowed(cur_level.field[cur_level.hero.y - 2][cur_level.hero.x])) {
-                                cur_level.field[--cur_level.hero.y][cur_level.hero.x] = EMPTY;
-                                cur_level.field[cur_level.hero.y - 1][cur_level.hero.x] = BOX;
-                            }
-                        }
-                        break;
-
-                    case SDLK_DOWN:
-                        if (cur_level.hero.y < N_FIELDS_HEIGHT - 1) {
-                            if (is_allowed(cur_level.field[cur_level.hero.y + 1][cur_level.hero.x]))
-                                ++cur_level.hero.y;
-                            else if (cur_level.hero.y < N_FIELDS_HEIGHT - 2 &&
-                                     cur_level.field[cur_level.hero.y + 1][cur_level.hero.x] == BOX &&
-                                     is_allowed(cur_level.field[cur_level.hero.y + 2][cur_level.hero.x])) {
-                                cur_level.field[++cur_level.hero.y][cur_level.hero.x] = EMPTY;
-                                cur_level.field[cur_level.hero.y + 1][cur_level.hero.x] = BOX;
-                            }
-                        }
-                        break;
-
-                    case SDLK_LEFT:
-                        gHeroTexture.direction = LEFT;
-                        if (cur_level.hero.x > 0) {
-                            if (is_allowed(cur_level.field[cur_level.hero.y][cur_level.hero.x - 1]))
-                                --cur_level.hero.x;
-                            else if (cur_level.hero.x >= 2 &&
-                                     cur_level.field[cur_level.hero.y][cur_level.hero.x - 1] == BOX &&
-                                     is_allowed(cur_level.field[cur_level.hero.y][cur_level.hero.x - 2])) {
-                                cur_level.field[cur_level.hero.y][--cur_level.hero.x] = EMPTY;
-                                cur_level.field[cur_level.hero.y][cur_level.hero.x - 1] = BOX;
-                            }
-                        }
-                        break;
-
-                    case SDLK_RIGHT:
-                        gHeroTexture.direction = RIGHT;
-                        if (cur_level.hero.x < N_FIELDS_WIDTH - 1) {
-                            if (is_allowed(cur_level.field[cur_level.hero.y][cur_level.hero.x + 1]))
-                                ++cur_level.hero.x;
-                            else if (cur_level.hero.x < N_FIELDS_WIDTH - 2 &&
-                                     cur_level.field[cur_level.hero.y][cur_level.hero.x + 1] == BOX &&
-                                     is_allowed(cur_level.field[cur_level.hero.y][cur_level.hero.x + 2])) {
-                                cur_level.field[cur_level.hero.y][++cur_level.hero.x] = EMPTY;
-                                cur_level.field[cur_level.hero.y][cur_level.hero.x + 1] = BOX;
-                            }
-                        }
-                        break;
-                }
+    while (GameRunning) {
+        if (level_n > N_LEVELS) {
+            GameRunning = 0;
+            break;
         }
 
-        /* NOTE: gDstTexture now is rendered even if it is not needed. */
-        /* TODO(Talkasi): rewrite it to be more optimized */
-        for (int n = 0; n < cur_level.n_boxes; ++n)
-            renderTexture(&gDstTexture, cur_level.dst[n].x * STEP, cur_level.dst[n].y * STEP, gRenderer);
+        struct level cur_level = get_level(level_n);
+        gHeroTexture.direction = RIGHT;
+        int LevelRunning = 1;
 
-        int progress = 0;
-        for (int y = 0; y < N_FIELDS_HEIGHT; ++y)
-            for (int x = 0; x < N_FIELDS_WIDTH; ++x) {
-                switch (cur_level.field[y][x]) {
-                    case BOX:
-                        for (int dst = 0; dst < cur_level.n_boxes; ++dst)
-                            if (x == cur_level.dst[dst].x && y == cur_level.dst[dst].y) {
-                                ++progress;
-                                /* TODO(Talkasi): render box on dst */
-                                continue;
-                            }
+        while (LevelRunning) {
+            SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+            SDL_RenderClear(gRenderer);
 
-                        renderTexture(&gBoxTexture, x * STEP, y * STEP, gRenderer);
-                        break;
-                    case WALL:
-                        renderTexture(&gWallTexture, x * STEP, y * STEP, gRenderer);
-                        break;
-                    default:
-                        break;
+            while (SDL_PollEvent(&e) != 0) {
+                if (e.type == SDL_QUIT) {
+                    GameRunning = 0;
+                    LevelRunning = 0;
+                    break;
                 }
+
+                if (e.type == SDL_KEYDOWN)
+                    switch (e.key.keysym.sym) {
+                        case SDLK_r:
+                            LevelRunning = 0;
+                            break;
+                        case SDLK_UP:
+                            if (cur_level.hero.y != 0) {
+                                if (is_allowed(cur_level.field[cur_level.hero.y - 1][cur_level.hero.x]))
+                                    --cur_level.hero.y;
+                                else if (cur_level.hero.y >= 2 &&
+                                         cur_level.field[cur_level.hero.y - 1][cur_level.hero.x] == BOX &&
+                                         is_allowed(cur_level.field[cur_level.hero.y - 2][cur_level.hero.x])) {
+                                    cur_level.field[--cur_level.hero.y][cur_level.hero.x] = EMPTY;
+                                    cur_level.field[cur_level.hero.y - 1][cur_level.hero.x] = BOX;
+                                }
+                            }
+                            break;
+
+                        case SDLK_DOWN:
+                            if (cur_level.hero.y < N_FIELDS_HEIGHT - 1) {
+                                if (is_allowed(cur_level.field[cur_level.hero.y + 1][cur_level.hero.x]))
+                                    ++cur_level.hero.y;
+                                else if (cur_level.hero.y < N_FIELDS_HEIGHT - 2 &&
+                                         cur_level.field[cur_level.hero.y + 1][cur_level.hero.x] == BOX &&
+                                         is_allowed(cur_level.field[cur_level.hero.y + 2][cur_level.hero.x])) {
+                                    cur_level.field[++cur_level.hero.y][cur_level.hero.x] = EMPTY;
+                                    cur_level.field[cur_level.hero.y + 1][cur_level.hero.x] = BOX;
+                                }
+                            }
+                            break;
+
+                        case SDLK_LEFT:
+                            gHeroTexture.direction = LEFT;
+                            if (cur_level.hero.x > 0) {
+                                if (is_allowed(cur_level.field[cur_level.hero.y][cur_level.hero.x - 1]))
+                                    --cur_level.hero.x;
+                                else if (cur_level.hero.x >= 2 &&
+                                         cur_level.field[cur_level.hero.y][cur_level.hero.x - 1] == BOX &&
+                                         is_allowed(cur_level.field[cur_level.hero.y][cur_level.hero.x - 2])) {
+                                    cur_level.field[cur_level.hero.y][--cur_level.hero.x] = EMPTY;
+                                    cur_level.field[cur_level.hero.y][cur_level.hero.x - 1] = BOX;
+                                }
+                            }
+                            break;
+
+                        case SDLK_RIGHT:
+                            gHeroTexture.direction = RIGHT;
+                            if (cur_level.hero.x < N_FIELDS_WIDTH - 1) {
+                                if (is_allowed(cur_level.field[cur_level.hero.y][cur_level.hero.x + 1]))
+                                    ++cur_level.hero.x;
+                                else if (cur_level.hero.x < N_FIELDS_WIDTH - 2 &&
+                                         cur_level.field[cur_level.hero.y][cur_level.hero.x + 1] == BOX &&
+                                         is_allowed(cur_level.field[cur_level.hero.y][cur_level.hero.x + 2])) {
+                                    cur_level.field[cur_level.hero.y][++cur_level.hero.x] = EMPTY;
+                                    cur_level.field[cur_level.hero.y][cur_level.hero.x + 1] = BOX;
+                                }
+                            }
+                            break;
+                    }
             }
 
-        if (progress == cur_level.n_boxes)
-            return 0;
+            /* NOTE: gDstTexture now is rendered even if it is not needed. */
+            /* TODO(Talkasi): rewrite it to be more optimized */
+            for (int n = 0; n < cur_level.n_boxes; ++n)
+                renderTexture(&gDstTexture, cur_level.dst[n].x * STEP, cur_level.dst[n].y * STEP, gRenderer);
 
-        if (gHeroTexture.direction == RIGHT)
-            renderTexture(&gHeroTexture.right, cur_level.hero.x * STEP, cur_level.hero.y * STEP, gRenderer);
-        else
-            renderTexture(&gHeroTexture.left, cur_level.hero.x * STEP, cur_level.hero.y * STEP, gRenderer);
+            int progress = 0;
+            for (int y = 0; y < N_FIELDS_HEIGHT; ++y)
+                for (int x = 0; x < N_FIELDS_WIDTH; ++x) {
+                    switch (cur_level.field[y][x]) {
+                        case BOX:
+                            for (int dst = 0; dst < cur_level.n_boxes; ++dst)
+                                if (x == cur_level.dst[dst].x && y == cur_level.dst[dst].y) {
+                                    ++progress;
+                                    /* TODO(Talkasi): render box on dst */
+                                    continue;
+                                }
 
-        SDL_RenderPresent(gRenderer);
+                            renderTexture(&gBoxTexture, x * STEP, y * STEP, gRenderer);
+                            break;
+                        case WALL:
+                            renderTexture(&gWallTexture, x * STEP, y * STEP, gRenderer);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+            if (progress == cur_level.n_boxes) {
+                LevelRunning = 0;
+                ++level_n;
+                /* TODO(Talkasi): add menu with music */
+            }
+
+            if (gHeroTexture.direction == RIGHT)
+                renderTexture(&gHeroTexture.right, cur_level.hero.x * STEP, cur_level.hero.y * STEP, gRenderer);
+            else
+                renderTexture(&gHeroTexture.left, cur_level.hero.x * STEP, cur_level.hero.y * STEP, gRenderer);
+
+            SDL_RenderPresent(gRenderer);
+        }
     }
 
     return 0;
