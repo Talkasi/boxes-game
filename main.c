@@ -20,7 +20,6 @@ enum field {
 
 int init();
 int loadMedia();
-int is_allowed(int point);
 
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
@@ -81,11 +80,11 @@ int main(int argc, char *args[])
                             break;
                         case SDLK_UP:
                             if (cur_level.hero.y != 0) {
-                                if (is_allowed(cur_level.field[cur_level.hero.y - 1][cur_level.hero.x]))
+                                if (cur_level.field[cur_level.hero.y - 1][cur_level.hero.x] == EMPTY)
                                     --cur_level.hero.y;
                                 else if (cur_level.hero.y >= 2 &&
                                          cur_level.field[cur_level.hero.y - 1][cur_level.hero.x] == BOX &&
-                                         is_allowed(cur_level.field[cur_level.hero.y - 2][cur_level.hero.x])) {
+                                         cur_level.field[cur_level.hero.y - 2][cur_level.hero.x] == EMPTY) {
                                     cur_level.field[--cur_level.hero.y][cur_level.hero.x] = EMPTY;
                                     cur_level.field[cur_level.hero.y - 1][cur_level.hero.x] = BOX;
                                 }
@@ -94,11 +93,11 @@ int main(int argc, char *args[])
 
                         case SDLK_DOWN:
                             if (cur_level.hero.y < N_FIELDS_HEIGHT - 1) {
-                                if (is_allowed(cur_level.field[cur_level.hero.y + 1][cur_level.hero.x]))
+                                if (cur_level.field[cur_level.hero.y + 1][cur_level.hero.x] == EMPTY)
                                     ++cur_level.hero.y;
                                 else if (cur_level.hero.y < N_FIELDS_HEIGHT - 2 &&
                                          cur_level.field[cur_level.hero.y + 1][cur_level.hero.x] == BOX &&
-                                         is_allowed(cur_level.field[cur_level.hero.y + 2][cur_level.hero.x])) {
+                                         cur_level.field[cur_level.hero.y + 2][cur_level.hero.x] == EMPTY) {
                                     cur_level.field[++cur_level.hero.y][cur_level.hero.x] = EMPTY;
                                     cur_level.field[cur_level.hero.y + 1][cur_level.hero.x] = BOX;
                                 }
@@ -108,11 +107,11 @@ int main(int argc, char *args[])
                         case SDLK_LEFT:
                             gHeroTexture.direction = LEFT;
                             if (cur_level.hero.x > 0) {
-                                if (is_allowed(cur_level.field[cur_level.hero.y][cur_level.hero.x - 1]))
+                                if (cur_level.field[cur_level.hero.y][cur_level.hero.x - 1] == EMPTY)
                                     --cur_level.hero.x;
                                 else if (cur_level.hero.x >= 2 &&
                                          cur_level.field[cur_level.hero.y][cur_level.hero.x - 1] == BOX &&
-                                         is_allowed(cur_level.field[cur_level.hero.y][cur_level.hero.x - 2])) {
+                                         cur_level.field[cur_level.hero.y][cur_level.hero.x - 2] == EMPTY) {
                                     cur_level.field[cur_level.hero.y][--cur_level.hero.x] = EMPTY;
                                     cur_level.field[cur_level.hero.y][cur_level.hero.x - 1] = BOX;
                                 }
@@ -122,11 +121,11 @@ int main(int argc, char *args[])
                         case SDLK_RIGHT:
                             gHeroTexture.direction = RIGHT;
                             if (cur_level.hero.x < N_FIELDS_WIDTH - 1) {
-                                if (is_allowed(cur_level.field[cur_level.hero.y][cur_level.hero.x + 1]))
+                                if (cur_level.field[cur_level.hero.y][cur_level.hero.x + 1] == EMPTY)
                                     ++cur_level.hero.x;
                                 else if (cur_level.hero.x < N_FIELDS_WIDTH - 2 &&
                                          cur_level.field[cur_level.hero.y][cur_level.hero.x + 1] == BOX &&
-                                         is_allowed(cur_level.field[cur_level.hero.y][cur_level.hero.x + 2])) {
+                                         cur_level.field[cur_level.hero.y][cur_level.hero.x + 2] == EMPTY) {
                                     cur_level.field[cur_level.hero.y][++cur_level.hero.x] = EMPTY;
                                     cur_level.field[cur_level.hero.y][cur_level.hero.x + 1] = BOX;
                                 }
@@ -176,14 +175,6 @@ int main(int argc, char *args[])
             SDL_RenderPresent(gRenderer);
         }
     }
-
-    return 0;
-}
-
-int is_allowed(int point)
-{
-    if (point == EMPTY || point == DST)
-        return 1;
 
     return 0;
 }

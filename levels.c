@@ -11,9 +11,9 @@ struct level get_level(int n)
                     {1, 1, 1, 1, 1, 0, 0, 0, 0},
                     {1, 0, 0, 0, 1, 0, 0, 0, 0},
                     {1, 0, 2, 2, 1, 0, 1, 1, 1},
-                    {1, 0, 2, 0, 1, 0, 1, 3, 1},
-                    {1, 1, 1, 0, 1, 1, 1, 3, 1},
-                    {0, 1, 1, 0, 0, 0, 0, 3, 1},
+                    {1, 0, 2, 0, 1, 0, 1, 0, 1},
+                    {1, 1, 1, 0, 1, 1, 1, 0, 1},
+                    {0, 1, 1, 0, 0, 0, 0, 0, 1},
                     {0, 1, 0, 0, 0, 1, 0, 0, 1},
                     {0, 1, 0, 0, 0, 1, 1, 1, 1},
                     {0, 1, 1, 1, 1, 1, 0, 0, 0},
@@ -35,13 +35,13 @@ struct level get_level(int n)
 
             cur_level.dst[2].x = 7;
             cur_level.dst[2].y = 5;
-            memcpy(&cur_level.field, &level_01, N_FIELDS_WIDTH * N_FIELDS_HEIGHT * sizeof(int));
+            memcpy(&cur_level.field, &level_01, sizeof (level_field));
         } break;
         case 2: {
             level_field level_02 = {
                     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-                    {1, 3, 3, 0, 0, 0, 0, 0, 0, 1},
-                    {1, 3, 3, 2, 0, 0, 1, 0, 0, 1},
+                    {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+                    {1, 0, 0, 2, 0, 0, 1, 0, 0, 1},
                     {1, 0, 0, 1, 2, 1, 1, 0, 1, 1},
                     {1, 0, 2, 0, 0, 0, 0, 0, 1, 0},
                     {1, 1, 1, 1, 1, 0, 1, 0, 1, 0},
@@ -69,7 +69,7 @@ struct level get_level(int n)
 
             cur_level.dst[3].x = 2;
             cur_level.dst[3].y = 2;
-            memcpy(&cur_level.field, &level_02, N_FIELDS_WIDTH * N_FIELDS_HEIGHT * sizeof(int));
+            memcpy(&cur_level.field, &level_02, sizeof(level_field));
         }
         default:
             break;
