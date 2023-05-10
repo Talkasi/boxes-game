@@ -31,7 +31,6 @@ struct gHeroTextures {
     struct LTexture right;
 } gHeroTexture;
 
-struct LTexture gLevelTexture;
 struct LTexture gDstTexture;
 struct LTexture gBoxTexture;
 struct LTexture gWallTexture;
@@ -57,8 +56,6 @@ int main(int argc, char *args[])
     while (Running) {
         SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
         SDL_RenderClear(gRenderer);
-
-        //        renderTexture(&gLevelTexture, 0, 0, gRenderer);
 
         while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) {
@@ -127,23 +124,35 @@ int main(int argc, char *args[])
                 }
         }
 
+        /* NOTE: gDstTexture now is rendered even if it is not needed. */
+        /* TODO(Talkasi): rewrite it to be more optimized */
+        for (int n = 0; n < cur_level.n_boxes; ++n)
+            renderTexture(&gDstTexture, cur_level.dst[n].x * STEP, cur_level.dst[n].y * STEP, gRenderer);
+
+        int progress = 0;
         for (int y = 0; y < N_FIELDS_HEIGHT; ++y)
-            for (int x = 0; x < N_FIELDS_WIDTH; ++x)
-            {
+            for (int x = 0; x < N_FIELDS_WIDTH; ++x) {
                 switch (cur_level.field[y][x]) {
                     case BOX:
+                        for (int dst = 0; dst < cur_level.n_boxes; ++dst)
+                            if (x == cur_level.dst[dst].x && y == cur_level.dst[dst].y) {
+                                ++progress;
+                                /* TODO(Talkasi): render box on dst */
+                                continue;
+                            }
+
                         renderTexture(&gBoxTexture, x * STEP, y * STEP, gRenderer);
                         break;
                     case WALL:
                         renderTexture(&gWallTexture, x * STEP, y * STEP, gRenderer);
                         break;
-                    case DST:
-                        renderTexture(&gDstTexture, x * STEP, y * STEP, gRenderer);
-                        break;
                     default:
                         break;
                 }
             }
+
+        if (progress == cur_level.n_boxes)
+            return 0;
 
         if (gHeroTexture.direction == RIGHT)
             renderTexture(&gHeroTexture.right, cur_level.hero.x * STEP, cur_level.hero.y * STEP, gRenderer);
@@ -212,11 +221,6 @@ int loadMedia()
         printf("Texture image loading Error.\n");
         return 0;
     }
-
-    //    if (!loadTextureFromFile(&gLevelTexture, "./images/temp/grass.bmp", gRenderer, SCREEN_WIDTH, SCREEN_HEIGHT)) {
-    //        printf("Texture image loading Error.\n");
-    //        return 0;
-    //    }
 
     if (!loadTextureFromFile(&gBoxTexture, "./images/temp/box_80.bmp", gRenderer, STEP, STEP)) {
         printf("Texture image loading Error.\n");
