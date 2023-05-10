@@ -14,8 +14,7 @@ enum direction { LEFT,
 enum field {
     EMPTY,
     WALL,
-    BOX,
-    DST
+    BOX
 };
 
 int init();
@@ -55,7 +54,9 @@ int main(int argc, char *args[])
         if (level_n > N_LEVELS)
             break;
 
-        struct level cur_level = get_level(level_n);
+        struct level cur_level;
+        get_level(level_n, &cur_level);
+
         gHeroTexture.direction = RIGHT;
         int LevelRunning = 1;
 

@@ -5,6 +5,8 @@
 #define N_FIELDS_HEIGHT 10
 
 #define N_LEVELS 2
+#define N_DST 10
+
 typedef int level_field[N_FIELDS_HEIGHT][N_FIELDS_WIDTH];
 
 struct point {
@@ -18,9 +20,9 @@ struct level {
     int h;
     level_field field;
     int n_boxes;
-    struct point dst[N_FIELDS_HEIGHT * N_FIELDS_WIDTH];
+    struct point dst[N_DST];
 };
 
-struct level get_level(int n);
+void get_level(int n, struct level *level_dst);
 
 #endif
