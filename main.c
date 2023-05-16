@@ -61,14 +61,11 @@ int main(int argc, char *args[])
         if (level_n > N_LEVELS)
             break;
 
-        struct level cur_level;
+        struct levelField cur_level;
         get_level(level_n, &cur_level);
-
-        gHeroTexture.direction = RIGHT;
         int LevelRunning = 1;
 
-        int wOffset = (SCREEN_WIDTH - cur_level.w * STEP) / 2;
-        int hOffset = (SCREEN_HEIGHT - cur_level.h * STEP) / 2;
+        gHeroTexture.direction = RIGHT;
 
         while (LevelRunning) {
             struct timeval start, end;
@@ -90,55 +87,61 @@ int main(int argc, char *args[])
                             LevelRunning = 0;
                             break;
                         case SDLK_UP:
-                            if (cur_level.hero.y != 0) {
-                                if (cur_level.field[cur_level.hero.y - 1][cur_level.hero.x] == EMPTY)
-                                    --cur_level.hero.y;
-                                else if (cur_level.hero.y >= 2 &&
-                                         cur_level.field[cur_level.hero.y - 1][cur_level.hero.x] == BOX &&
-                                         cur_level.field[cur_level.hero.y - 2][cur_level.hero.x] == EMPTY) {
-                                    cur_level.field[--cur_level.hero.y][cur_level.hero.x] = EMPTY;
-                                    cur_level.field[cur_level.hero.y - 1][cur_level.hero.x] = BOX;
-                                }
+                            if (cur_level.hero.i > 1 && cur_level.field[cur_level.hero.i - 1][cur_level.hero.j].type == EMPTY) {
+                                --cur_level.hero.i;
+                                cur_level.hero.y -= STEP;
+                            } else if (cur_level.hero.i >= 2 &&
+                                       cur_level.field[cur_level.hero.i - 1][cur_level.hero.j].type == BOX &&
+                                       cur_level.field[cur_level.hero.i - 2][cur_level.hero.j].type == EMPTY) {
+                                cur_level.field[--cur_level.hero.i][cur_level.hero.j].type = EMPTY;
+                                cur_level.field[cur_level.hero.i - 1][cur_level.hero.j].type = BOX;
+                                cur_level.hero.y -= STEP;
                             }
                             break;
 
                         case SDLK_DOWN:
-                            if (cur_level.hero.y < N_FIELDS_HEIGHT - 1) {
-                                if (cur_level.field[cur_level.hero.y + 1][cur_level.hero.x] == EMPTY)
-                                    ++cur_level.hero.y;
-                                else if (cur_level.hero.y < N_FIELDS_HEIGHT - 2 &&
-                                         cur_level.field[cur_level.hero.y + 1][cur_level.hero.x] == BOX &&
-                                         cur_level.field[cur_level.hero.y + 2][cur_level.hero.x] == EMPTY) {
-                                    cur_level.field[++cur_level.hero.y][cur_level.hero.x] = EMPTY;
-                                    cur_level.field[cur_level.hero.y + 1][cur_level.hero.x] = BOX;
+                            if (cur_level.hero.i < N_FIELDS_HEIGHT - 1) {
+                                if (cur_level.field[cur_level.hero.i + 1][cur_level.hero.j].type == EMPTY) {
+                                    ++cur_level.hero.i;
+                                    cur_level.hero.y += STEP;
+                                } else if (cur_level.hero.i < N_FIELDS_HEIGHT - 2 &&
+                                           cur_level.field[cur_level.hero.i + 1][cur_level.hero.j].type == BOX &&
+                                           cur_level.field[cur_level.hero.i + 2][cur_level.hero.j].type == EMPTY) {
+                                    cur_level.field[++cur_level.hero.i][cur_level.hero.j].type = EMPTY;
+                                    cur_level.field[cur_level.hero.i + 1][cur_level.hero.j].type = BOX;
+                                    cur_level.hero.y += STEP;
                                 }
                             }
                             break;
 
                         case SDLK_LEFT:
                             gHeroTexture.direction = LEFT;
-                            if (cur_level.hero.x > 0) {
-                                if (cur_level.field[cur_level.hero.y][cur_level.hero.x - 1] == EMPTY)
-                                    --cur_level.hero.x;
-                                else if (cur_level.hero.x >= 2 &&
-                                         cur_level.field[cur_level.hero.y][cur_level.hero.x - 1] == BOX &&
-                                         cur_level.field[cur_level.hero.y][cur_level.hero.x - 2] == EMPTY) {
-                                    cur_level.field[cur_level.hero.y][--cur_level.hero.x] = EMPTY;
-                                    cur_level.field[cur_level.hero.y][cur_level.hero.x - 1] = BOX;
+                            if (cur_level.hero.j > 0) {
+                                if (cur_level.field[cur_level.hero.i][cur_level.hero.j - 1].type == EMPTY) {
+                                    --cur_level.hero.j;
+                                    cur_level.hero.x -= STEP;
+                                } else if (cur_level.hero.j >= 2 &&
+                                         cur_level.field[cur_level.hero.i][cur_level.hero.j - 1].type == BOX &&
+                                         cur_level.field[cur_level.hero.i][cur_level.hero.j - 2].type == EMPTY) {
+                                    cur_level.field[cur_level.hero.i][--cur_level.hero.j].type = EMPTY;
+                                    cur_level.field[cur_level.hero.i][cur_level.hero.j - 1].type = BOX;
+                                    cur_level.hero.x -= STEP;
                                 }
                             }
                             break;
 
                         case SDLK_RIGHT:
                             gHeroTexture.direction = RIGHT;
-                            if (cur_level.hero.x < N_FIELDS_WIDTH - 1) {
-                                if (cur_level.field[cur_level.hero.y][cur_level.hero.x + 1] == EMPTY)
-                                    ++cur_level.hero.x;
-                                else if (cur_level.hero.x < N_FIELDS_WIDTH - 2 &&
-                                         cur_level.field[cur_level.hero.y][cur_level.hero.x + 1] == BOX &&
-                                         cur_level.field[cur_level.hero.y][cur_level.hero.x + 2] == EMPTY) {
-                                    cur_level.field[cur_level.hero.y][++cur_level.hero.x] = EMPTY;
-                                    cur_level.field[cur_level.hero.y][cur_level.hero.x + 1] = BOX;
+                            if (cur_level.hero.j < N_FIELDS_WIDTH - 1) {
+                                if (cur_level.field[cur_level.hero.i][cur_level.hero.j + 1].type == EMPTY) {
+                                    ++cur_level.hero.j;
+                                    cur_level.hero.x += STEP;
+                                } else if (cur_level.hero.j < N_FIELDS_WIDTH - 2 &&
+                                         cur_level.field[cur_level.hero.i][cur_level.hero.j + 1].type == BOX &&
+                                         cur_level.field[cur_level.hero.i][cur_level.hero.j + 2].type == EMPTY) {
+                                    cur_level.field[cur_level.hero.i][++cur_level.hero.j].type = EMPTY;
+                                    cur_level.field[cur_level.hero.i][cur_level.hero.j + 1].type = BOX;
+                                    cur_level.hero.x += STEP;
                                 }
                             }
                             break;
@@ -147,25 +150,26 @@ int main(int argc, char *args[])
 
             /* NOTE: gDstTexture now is rendered even if it is not needed. */
             /* TODO(Talkasi): rewrite it to be more optimized */
-            for (int n = 0; n < cur_level.n_boxes; ++n)
-                renderTexture(&gDstTexture, cur_level.dst[n].x * STEP + wOffset, cur_level.dst[n].y * STEP + hOffset, gRenderer);
+            for (int n = 0; n < cur_level.n_boxes; ++n) {
+                renderTexture(&gDstTexture, cur_level.dst[n].x, cur_level.dst[n].y, gRenderer);
+            }
 
             int progress = 0;
             for (int y = 0; y < N_FIELDS_HEIGHT; ++y)
                 for (int x = 0; x < N_FIELDS_WIDTH; ++x) {
-                    switch (cur_level.field[y][x]) {
+                    switch (cur_level.field[y][x].type) {
                         case BOX:
                             for (int dst = 0; dst < cur_level.n_boxes; ++dst)
-                                if (x == cur_level.dst[dst].x && y == cur_level.dst[dst].y) {
+                                if (cur_level.field[y][x].x == cur_level.dst[dst].x && cur_level.field[y][x].y == cur_level.dst[dst].y) {
                                     ++progress;
                                     /* TODO(Talkasi): render box on dst */
                                     continue;
                                 }
 
-                            renderTexture(&gBoxTexture, x * STEP + wOffset, y * STEP + hOffset, gRenderer);
+                            renderTexture(&gBoxTexture, cur_level.field[y][x].x, cur_level.field[y][x].y, gRenderer);
                             break;
                         case WALL:
-                            renderTexture(&gWallTexture, x * STEP + wOffset, y * STEP + hOffset, gRenderer);
+                            renderTexture(&gWallTexture, cur_level.field[y][x].x, cur_level.field[y][x].y, gRenderer);
                             break;
                         default:
                             break;
@@ -179,9 +183,9 @@ int main(int argc, char *args[])
             }
 
             if (gHeroTexture.direction == RIGHT)
-                renderTexture(&gHeroTexture.right, cur_level.hero.x * STEP + wOffset, cur_level.hero.y * STEP + hOffset, gRenderer);
+                renderTexture(&gHeroTexture.right, cur_level.hero.x, cur_level.hero.y, gRenderer);
             else
-                renderTexture(&gHeroTexture.left, cur_level.hero.x * STEP + wOffset, cur_level.hero.y * STEP + hOffset, gRenderer);
+                renderTexture(&gHeroTexture.left, cur_level.hero.x, cur_level.hero.y, gRenderer);
 
             SDL_RenderPresent(gRenderer);
 
@@ -267,5 +271,5 @@ int loadMedia()
 long long time_calc(const struct timeval *start, const struct timeval *end)
 {
     return (long long) (end->tv_sec - start->tv_sec) * MSEC_IN_SEC +
-            (end->tv_usec - start->tv_usec) / USEC_IN_MSEC;
+           (end->tv_usec - start->tv_usec) / USEC_IN_MSEC;
 }

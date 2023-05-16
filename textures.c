@@ -5,7 +5,6 @@
 int loadTextureFromFile(struct LTexture *Texture, char *path, SDL_Renderer *Render, int w, int h)
 {
     freeTexture(Texture);
-
     SDL_Texture *newTexture = NULL;
 
     SDL_Surface *loadedSurface = IMG_Load(path);

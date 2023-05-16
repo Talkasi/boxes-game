@@ -1,28 +1,40 @@
 #ifndef BOXES_GAME_LEVELS_H
 #define BOXES_GAME_LEVELS_H
 
+#define SCREEN_WIDTH 510
+#define SCREEN_HEIGHT 510
+#define STEP 51
+
 #define N_FIELDS_WIDTH 10
 #define N_FIELDS_HEIGHT 10
+
+#define N_SUBFIELDS 100
 
 #define N_LEVELS 2
 #define N_DST 10
 
 typedef int level_field[N_FIELDS_HEIGHT][N_FIELDS_WIDTH];
 
-struct point {
+struct heroInfo {
     int x;
     int y;
+    int i;
+    int j;
 };
 
-struct level {
-    struct point hero;
-    int w;
-    int h;
-    level_field field;
+struct subField {
+    int x;
+    int y;
+    int type;
+};
+
+struct levelField {
+    struct subField field[N_FIELDS_HEIGHT][N_FIELDS_WIDTH];
+    struct heroInfo hero;
     int n_boxes;
-    struct point dst[N_DST];
+    struct subField dst[N_SUBFIELDS];
 };
 
-void get_level(int n, struct level *level_dst);
+void get_level(int n, struct levelField *level_dst);
 
 #endif
