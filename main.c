@@ -3,16 +3,16 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <stdio.h>
-#include <sys/time.h>
-#include <time.h>
 
 #define SCREEN_WIDTH 510
 #define SCREEN_HEIGHT 510
 #define STEP 51
 
 #define MSEC_IN_SEC 1000
-#define USEC_IN_MSEC 1000
 #define FPS 30
+
+int init();
+int loadMedia();
 
 enum direction { LEFT,
                  RIGHT };
@@ -22,10 +22,6 @@ enum field {
     WALL,
     BOX
 };
-
-int init();
-int loadMedia();
-long long time_calc(const struct timeval *start, const struct timeval *end);
 
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
@@ -39,6 +35,7 @@ struct gHeroTextures {
 struct LTexture gDstTexture;
 struct LTexture gBoxTexture;
 struct LTexture gWallTexture;
+
 
 int main(int argc, char *args[])
 {
@@ -68,8 +65,8 @@ int main(int argc, char *args[])
         gHeroTexture.direction = RIGHT;
 
         while (LevelRunning) {
-            struct timeval start, end;
-            gettimeofday(&start, 0);
+            uint32_t start, delay_time;
+            start = SDL_GetTicks();
 
             SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
             SDL_RenderClear(gRenderer);
@@ -121,8 +118,8 @@ int main(int argc, char *args[])
                                     --cur_level.hero.j;
                                     cur_level.hero.x -= STEP;
                                 } else if (cur_level.hero.j >= 2 &&
-                                         cur_level.field[cur_level.hero.i][cur_level.hero.j - 1].type == BOX &&
-                                         cur_level.field[cur_level.hero.i][cur_level.hero.j - 2].type == EMPTY) {
+                                           cur_level.field[cur_level.hero.i][cur_level.hero.j - 1].type == BOX &&
+                                           cur_level.field[cur_level.hero.i][cur_level.hero.j - 2].type == EMPTY) {
                                     cur_level.field[cur_level.hero.i][--cur_level.hero.j].type = EMPTY;
                                     cur_level.field[cur_level.hero.i][cur_level.hero.j - 1].type = BOX;
                                     cur_level.hero.x -= STEP;
@@ -137,8 +134,8 @@ int main(int argc, char *args[])
                                     ++cur_level.hero.j;
                                     cur_level.hero.x += STEP;
                                 } else if (cur_level.hero.j < N_FIELDS_WIDTH - 2 &&
-                                         cur_level.field[cur_level.hero.i][cur_level.hero.j + 1].type == BOX &&
-                                         cur_level.field[cur_level.hero.i][cur_level.hero.j + 2].type == EMPTY) {
+                                           cur_level.field[cur_level.hero.i][cur_level.hero.j + 1].type == BOX &&
+                                           cur_level.field[cur_level.hero.i][cur_level.hero.j + 2].type == EMPTY) {
                                     cur_level.field[cur_level.hero.i][++cur_level.hero.j].type = EMPTY;
                                     cur_level.field[cur_level.hero.i][cur_level.hero.j + 1].type = BOX;
                                     cur_level.hero.x += STEP;
@@ -189,11 +186,9 @@ int main(int argc, char *args[])
 
             SDL_RenderPresent(gRenderer);
 
-            gettimeofday(&end, 0);
-            long long t = MSEC_IN_SEC / FPS - time_calc(&start, &end);
-            if (t > 0) {
-                struct timespec req = {t / MSEC_IN_SEC, t % MSEC_IN_SEC};
-                nanosleep(&req, 0);
+            delay_time = MSEC_IN_SEC / FPS - start + SDL_GetTicks();
+            if (delay_time > 0) {
+                SDL_Delay(delay_time);
             }
         }
     }
@@ -266,10 +261,4 @@ int loadMedia()
     }
 
     return 1;
-}
-
-long long time_calc(const struct timeval *start, const struct timeval *end)
-{
-    return (long long) (end->tv_sec - start->tv_sec) * MSEC_IN_SEC +
-           (end->tv_usec - start->tv_usec) / USEC_IN_MSEC;
 }
