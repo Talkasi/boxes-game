@@ -11,7 +11,6 @@
 #define N_SUBFIELDS 100
 
 #define N_LEVELS 2
-#define N_DST 10
 
 typedef int level_field[N_FIELDS_HEIGHT][N_FIELDS_WIDTH];
 
@@ -28,13 +27,13 @@ struct subField {
     int type;
 };
 
-struct levelField {
+struct level {
     struct subField field[N_FIELDS_HEIGHT][N_FIELDS_WIDTH];
     struct heroInfo hero;
     int n_boxes;
     struct subField dst[N_SUBFIELDS];
 };
 
-void get_level(int n, struct levelField *level_dst);
+void get_level(int n, struct level *level_dst);
 
 #endif
