@@ -9,8 +9,13 @@
 #define N_FIELDS_HEIGHT 10
 
 #define N_SUBFIELDS 100
-
 #define N_LEVELS 2
+
+enum field {
+    EMPTY,
+    WALL,
+    BOX
+};
 
 typedef int level_field[N_FIELDS_HEIGHT][N_FIELDS_WIDTH];
 

@@ -14,16 +14,11 @@
 
 int init();
 int loadMedia();
+int RenderField(struct level *cur_level);
 
 enum hero_state { LEFT,
                   RIGHT,
                   SUCCESS };
-
-enum field {
-    EMPTY,
-    WALL,
-    BOX
-};
 
 enum music_type {
     NO_MUSIC,
@@ -78,12 +73,15 @@ int main(int argc, char *args[])
 
         gHeroTexture.state = RIGHT;
 
-        Mix_PlayMusic(gMusic, -1);
         while (LevelRunning) {
             uint32_t start, delay_time;
             start = SDL_GetTicks();
+
             if (Mix_PlayingMusic() == 0)
                 switch (MusicType) {
+                    case LEVEL:
+                        Mix_PlayMusic(gMusic, -1);
+                        break;
                     case SUCCESS_START:
                         Mix_PlayMusic(gSuccessStartMusic, 1);
                         MusicType = SUCCESS_END;
@@ -184,27 +182,7 @@ int main(int argc, char *args[])
                 renderTexture(&gDstTexture, cur_level.dst[n].x, cur_level.dst[n].y, gRenderer);
             }
 
-            int progress = 0;
-            for (int y = 0; y < N_FIELDS_HEIGHT; ++y)
-                for (int x = 0; x < N_FIELDS_WIDTH; ++x) {
-                    switch (cur_level.field[y][x].type) {
-                        case BOX:
-                            for (int dst = 0; dst < cur_level.n_boxes; ++dst)
-                                if (cur_level.field[y][x].x == cur_level.dst[dst].x && cur_level.field[y][x].y == cur_level.dst[dst].y) {
-                                    ++progress;
-                                    /* TODO(Talkasi): render box on dst */
-                                    continue;
-                                }
-
-                            renderTexture(&gBoxTexture, cur_level.field[y][x].x, cur_level.field[y][x].y, gRenderer);
-                            break;
-                        case WALL:
-                            renderTexture(&gWallTexture, cur_level.field[y][x].x, cur_level.field[y][x].y, gRenderer);
-                            break;
-                        default:
-                            break;
-                    }
-                }
+            int progress = RenderField(&cur_level);
 
             if (progress == cur_level.n_boxes && MusicType == LEVEL) {
                 MusicType = SUCCESS_START;
@@ -239,7 +217,7 @@ int main(int argc, char *args[])
 int init()
 {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_VIDEO) < 0) {
-        printf("SDL init Error: %s\n", SDL_GetError());
+                printf("SDL init Error: %s\n", SDL_GetError());
         return 0;
     }
 
@@ -329,4 +307,29 @@ int loadMedia()
     }
 
     return 1;
+}
+
+int RenderField(struct level *cur_level) {
+    int progress = 0;
+    for (int y = 0; y < N_FIELDS_HEIGHT; ++y)
+        for (int x = 0; x < N_FIELDS_WIDTH; ++x) {
+            switch (cur_level->field[y][x].type) {
+                case BOX:
+                    for (int dst = 0; dst < cur_level->n_boxes; ++dst)
+                        if (cur_level->field[y][x].x == cur_level->dst[dst].x && cur_level->field[y][x].y == cur_level->dst[dst].y) {
+                            ++progress;
+                            /* TODO(Talkasi): render box on dst */
+                            continue;
+                        }
+
+                    renderTexture(&gBoxTexture, cur_level->field[y][x].x, cur_level->field[y][x].y, gRenderer);
+                    break;
+                case WALL:
+                    renderTexture(&gWallTexture, cur_level->field[y][x].x, cur_level->field[y][x].y, gRenderer);
+                    break;
+                default:
+                    break;
+            }
+        }
+    return progress;
 }
