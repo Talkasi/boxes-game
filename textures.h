@@ -3,6 +3,7 @@
 
 typedef struct SDL_Texture SDL_Texture;
 typedef struct SDL_Renderer SDL_Renderer;
+typedef struct SDL_Rect SDL_Rect;
 
 struct LTexture {
     SDL_Texture *Texture;
@@ -11,7 +12,7 @@ struct LTexture {
 };
 
 void freeTexture(struct LTexture *Texture);
-void renderTexture(struct LTexture *Texture, int x, int y, SDL_Renderer *Render);
+void renderTexture(struct LTexture *Texture, int x, int y, SDL_Rect srcRect, SDL_Renderer *Render);
 int loadTextureFromFile(struct LTexture *Texture, char *path, SDL_Renderer *Render, int w, int h);
 
 #endif

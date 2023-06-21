@@ -42,10 +42,10 @@ int loadTextureFromFile(struct LTexture *Texture, char *path, SDL_Renderer *Rend
     return 1;
 }
 
-void renderTexture(struct LTexture *Texture, int x, int y, SDL_Renderer *Render)
+void renderTexture(struct LTexture *Texture, int x, int y, SDL_Rect srcRect, SDL_Renderer *Render)
 {
     SDL_Rect renderQuad = {x, y, Texture->Width, Texture->Height};
-    SDL_RenderCopy(Render, Texture->Texture, NULL, &renderQuad);
+    SDL_RenderCopy(Render, Texture->Texture, &srcRect, &renderQuad);
 }
 
 void freeTexture(struct LTexture *Texture)

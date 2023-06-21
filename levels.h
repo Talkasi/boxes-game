@@ -11,10 +11,12 @@
 #define N_SUBFIELDS 100
 #define N_LEVELS 2
 
+#define DST 0
 enum field {
     EMPTY,
     WALL,
-    BOX
+    BOX,
+    N_FIELD_TYPES
 };
 
 typedef int level_field[N_FIELDS_HEIGHT][N_FIELDS_WIDTH];
