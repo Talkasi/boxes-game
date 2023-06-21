@@ -1,6 +1,7 @@
 #include "textures.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 
 int loadTextureFromFile(struct LTexture *Texture, char *path, SDL_Renderer *Render, int w, int h)
 {
@@ -46,6 +47,16 @@ void renderTexture(struct LTexture *Texture, int x, int y, SDL_Rect srcRect, SDL
 {
     SDL_Rect renderQuad = {x, y, Texture->Width, Texture->Height};
     SDL_RenderCopy(Render, Texture->Texture, &srcRect, &renderQuad);
+}
+
+void renderText(char *text, SDL_Rect textRect, TTF_Font *Font, SDL_Renderer *Render)
+{
+    SDL_Color Color = {0, 0, 0, 0};
+    SDL_Surface *surfaceMessage = TTF_RenderText_Solid(Font, text, Color);
+    SDL_Texture *Message = SDL_CreateTextureFromSurface(Render, surfaceMessage);
+    SDL_RenderCopy(Render, Message, NULL, &textRect);
+    SDL_DestroyTexture(Message);
+    SDL_FreeSurface(surfaceMessage);
 }
 
 void freeTexture(struct LTexture *Texture)
