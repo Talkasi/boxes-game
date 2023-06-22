@@ -19,6 +19,7 @@ int RenderField(struct level *cur_level);
 int renderMenu(SDL_Event *e, int *gState, int *lState);
 int renderLevel(SDL_Event *e, struct level *cur_level, int *gState, int *lState, int *mState, int *hState);
 int inBorders(int curPos_i, int curPos_j, int curVel_i, int curVel_j);
+int canMove(int subFieldType);
 int setTextures(SDL_Rect Textures[], int n, int w, int h);
 
 enum hero_state { RIGHT,
@@ -177,6 +178,16 @@ int inBorders(int curPos_i, int curPos_j, int curVel_i, int curVel_j)
            curPos_j + curVel_j > 0 && curPos_j + curVel_j < N_FIELDS_HEIGHT;
 }
 
+int canMove(int subFieldType)
+{
+    return subFieldType == EMPTY || subFieldType == DST;
+}
+
+int isBox(int subFieldType)
+{
+    return subFieldType == N_BOX || subFieldType == D_BOX;
+}
+
 int renderLevel(SDL_Event *e, struct level *cur_level, int *gState, int *lState, int *mState, int *hState)
 {
     int vel_i = 0, vel_j = 0;
@@ -223,24 +234,25 @@ int renderLevel(SDL_Event *e, struct level *cur_level, int *gState, int *lState,
     }
 
     if (inBorders(cur_level->hero.i, cur_level->hero.j, vel_i, vel_j) &&
-        cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j].type == EMPTY) {
+        canMove(cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j])) {
         cur_level->hero.i += vel_i;
         cur_level->hero.j += vel_j;
-        cur_level->hero.x += STEP * vel_j;
-        cur_level->hero.y += STEP * vel_i;
     } else if (inBorders(cur_level->hero.i, cur_level->hero.j, vel_i * 2, vel_j * 2) &&
-               cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j].type == BOX &&
-               cur_level->field[cur_level->hero.i + vel_i * 2][cur_level->hero.j + vel_j * 2].type == EMPTY) {
+               isBox(cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j]) &&
+               canMove(cur_level->field[cur_level->hero.i + vel_i * 2][cur_level->hero.j + vel_j * 2])) {
         cur_level->hero.i += vel_i;
         cur_level->hero.j += vel_j;
-        cur_level->field[cur_level->hero.i][cur_level->hero.j].type = EMPTY;
-        cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j].type = BOX;
-        cur_level->hero.x += STEP * vel_j;
-        cur_level->hero.y += STEP * vel_i;
-    }
 
-    for (int n = 0; n < cur_level->n_boxes; ++n)
-        renderTexture(&gFieldTextures, cur_level->dst[n].x, cur_level->dst[n].y, FieldT[DST], gRenderer);
+        if (cur_level->field[cur_level->hero.i][cur_level->hero.j] == N_BOX)
+            cur_level->field[cur_level->hero.i][cur_level->hero.j] = EMPTY;
+        else if (cur_level->field[cur_level->hero.i][cur_level->hero.j] == D_BOX)
+            cur_level->field[cur_level->hero.i][cur_level->hero.j] = DST;
+
+        if (cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j] == DST)
+            cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j] = D_BOX;
+        else if (cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j] == EMPTY)
+            cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j] = N_BOX;
+    }
 
     int progress = RenderField(cur_level);
     if (progress == cur_level->n_boxes && *mState == LEVEL_MUSIC) {
@@ -248,7 +260,10 @@ int renderLevel(SDL_Event *e, struct level *cur_level, int *gState, int *lState,
         Mix_HaltMusic();
     }
 
-    renderTexture(&gHeroTextures, cur_level->hero.x, cur_level->hero.y, HeroT[*hState], gRenderer);
+    renderTexture(&gHeroTextures,
+                  cur_level->hero.j * STEP + cur_level->OffsetW,
+                  cur_level->hero.i * STEP + cur_level->OffsetH,
+                  HeroT[*hState], gRenderer);
 }
 
 int init()
@@ -325,7 +340,7 @@ int loadMedia()
     }
     setTextures(HeroT, N_HERO_TYPES, STEP, STEP);
 
-    if (!loadTextureFromFile(&gFieldTextures, "./images/fields.bmp", gRenderer, STEP, STEP)) {
+    if (!loadTextureFromFile(&gFieldTextures, "./images/fields_new.png", gRenderer, STEP, STEP)) {
         printf("Texture image loading Error.\n");
         return 0;
     }
@@ -349,26 +364,17 @@ int setTextures(SDL_Rect Textures[], int n, int w, int h)
 int RenderField(struct level *cur_level)
 {
     int progress = 0;
-    for (int y = 0; y < N_FIELDS_HEIGHT; ++y)
-        for (int x = 0; x < N_FIELDS_WIDTH; ++x) {
-            switch (cur_level->field[y][x].type) {
-                case BOX:
-                    for (int dst = 0; dst < cur_level->n_boxes; ++dst)
-                        if (cur_level->field[y][x].x == cur_level->dst[dst].x && cur_level->field[y][x].y == cur_level->dst[dst].y) {
-                            ++progress;
-                            /* TODO(Talkasi): render box on dst */
-                            continue;
-                        }
-
-                    renderTexture(&gFieldTextures, cur_level->field[y][x].x, cur_level->field[y][x].y, FieldT[BOX], gRenderer);
-                    break;
-                case WALL:
-                    renderTexture(&gFieldTextures, cur_level->field[y][x].x, cur_level->field[y][x].y, FieldT[WALL], gRenderer);
-                    break;
-                default:
-                    break;
-            }
+    int x = cur_level->OffsetW;
+    int y = cur_level->OffsetH;
+    for (int i = 0; i < N_FIELDS_HEIGHT; ++i) {
+        for (int j = 0; j < N_FIELDS_WIDTH; ++j) {
+            renderTexture(&gFieldTextures, x, y, FieldT[cur_level->field[i][j]], gRenderer);
+            x += STEP;
+            if (cur_level->field[i][j] == D_BOX)
+                ++progress;
         }
-
+        x = cur_level->OffsetW;
+        y += STEP;
+    }
     return progress;
 }
