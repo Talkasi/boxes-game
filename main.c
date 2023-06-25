@@ -1,6 +1,6 @@
+#include "config.h"
 #include "levels.h"
 #include "textures.h"
-#include "config.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
@@ -11,11 +11,15 @@
 
 int init();
 int loadMedia();
-int RenderField(struct level *cur_level);
+
+int renderField(struct level *cur_level);
+int renderStart(SDL_Event *e, int *gRunning, int *lState);
 int renderMenu(SDL_Event *e, int *gState, int *lState);
 int renderLevel(SDL_Event *e, struct level *cur_level, int *gState, int *lState, int *mState, int *hState);
+
 int inBorders(int curPos_i, int curPos_j, int curVel_i, int curVel_j);
 int canMove(int subFieldType);
+
 int setTextures(SDL_Rect Textures[], int n, int w, int h);
 
 enum hero_state { RIGHT,
@@ -24,14 +28,15 @@ enum hero_state { RIGHT,
                   N_HERO_TYPES };
 
 enum music_type {
-    NO_MUSIC,
-    LEVEL_MUSIC,
+    NEXT_LVL,
+    LVL_MUSIC,
     SUCCESS_START,
     SUCCESS_END
 };
 
 enum game_state {
-    GAME_MENU,
+    START,
+    MENU,
     LEVEL
 };
 
@@ -50,45 +55,46 @@ struct fonts {
 } gFonts;
 
 struct LTexture gTextTexture;
+struct LTexture gStartTexture;
 
 Mix_Music *gMusic = NULL;
 Mix_Music *gSuccessStartMusic = NULL;
 Mix_Music *gSuccessEndMusic = NULL;
 
+#define INIT_ERR 1
+#define LOAD_ERR 2
+
 int main(int argc, char *args[])
 {
-    if (!init()) {
-        printf("Failed to initialize SDL.\n");
-        return 1;
-    }
+    if (!init())
+        return INIT_ERR;
 
-    if (!loadMedia()) {
-        printf("Failed to load media.\n");
-        return 1;
-    }
+    if (!loadMedia())
+        return LOAD_ERR;
 
     int GameRunning = 1;
-    int level_n = 1;
+    int cur_lvl_n = 1;
     SDL_Event e;
+    int GameState = START;
 
     while (GameRunning) {
-        if (level_n > N_LEVELS)
+        if (cur_lvl_n > N_LEVELS)
             break;
 
         struct level cur_level;
-        get_level(level_n, &cur_level);
+        get_level(cur_lvl_n, &cur_level);
         int LevelRunning = 1;
-        int GameState = GAME_MENU;
-        int MusicType = LEVEL_MUSIC;
+        int MusicType = LVL_MUSIC;
+        int MusicState = 1;
         int HeroState = RIGHT;
 
         while (LevelRunning) {
             uint32_t start, delay_time;
             start = SDL_GetTicks();
 
-            if (GameState == LEVEL && Mix_PlayingMusic() == 0)
+            if (MusicState && GameState == LEVEL && Mix_PlayingMusic() == 0)
                 switch (MusicType) {
-                    case LEVEL_MUSIC:
+                    case LVL_MUSIC:
                         Mix_PlayMusic(gMusic, -1);
                         break;
                     case SUCCESS_START:
@@ -98,11 +104,11 @@ int main(int argc, char *args[])
                     case SUCCESS_END:
                         Mix_PlayMusic(gSuccessEndMusic, 1);
                         HeroState = SUCCESS;
-                        MusicType = NO_MUSIC;
+                        MusicType = NEXT_LVL;
                         break;
-                    case NO_MUSIC:
+                    case NEXT_LVL:
                         LevelRunning = 0;
-                        ++level_n;
+                        ++cur_lvl_n;
                         break;
                     default:
                         break;
@@ -112,11 +118,11 @@ int main(int argc, char *args[])
             SDL_RenderClear(gRenderer);
 
             switch (GameState) {
-                case (GAME_MENU):
-                    GameState = renderMenu(&e, &GameRunning, &LevelRunning);
+                case (START):
+                    GameState = renderStart(&e, &GameRunning, &LevelRunning);
                     break;
                 case (LEVEL):
-                    renderLevel(&e, &cur_level, &GameRunning, &LevelRunning, &MusicType, &HeroState);
+                    GameState = renderLevel(&e, &cur_level, &GameRunning, &LevelRunning, &MusicType, &HeroState);
                     break;
                 default:
                     break;
@@ -130,6 +136,34 @@ int main(int argc, char *args[])
     }
 
     return 0;
+}
+
+int renderStart(SDL_Event *e, int *gRunning, int *lState)
+{
+    int gState = START;
+    while (SDL_PollEvent(e) != 0) {
+        if (e->type == SDL_QUIT) {
+            *gRunning = 0;
+            *lState = 0;
+            break;
+        }
+
+        if (e->type == SDL_KEYDOWN)
+            switch (e->key.keysym.sym) {
+                case SDLK_q:
+                    *gRunning = 0;
+                    *lState = 0;
+                    break;
+                case SDLK_RETURN:
+                case SDLK_KP_ENTER:
+                    gState = LEVEL;
+                    break;
+                default:
+                    break;
+            }
+    }
+    renderTexture(&gStartTexture, 0, 0, NULL, gRenderer);
+    return gState;
 }
 
 int renderMenu(SDL_Event *e, int *gState, int *lState)
@@ -152,17 +186,13 @@ int renderMenu(SDL_Event *e, int *gState, int *lState)
                     mState = LEVEL;
                     break;
                 case SDLK_DOWN:
-                    mState = GAME_MENU;
+                    mState = MENU;
                     break;
                 default:
                     break;
             }
     }
 
-    renderTexture(&gHeroTextures,
-                  SCREEN_WIDTH / 2 - gHeroTextures.Width / 2,
-                  SCREEN_HEIGHT / 2 - gHeroTextures.Height / 2,
-                  HeroT[RIGHT], gRenderer);
     SDL_Rect textRect = {SCREEN_WIDTH / 2 - 100 / 2, SCREEN_HEIGHT * 3 / 4, 100, 24};
     renderText("Menu", textRect, gFonts.steelpla, gRenderer);
     return mState;
@@ -195,9 +225,10 @@ int renderLevel(SDL_Event *e, struct level *cur_level, int *gState, int *lState,
             break;
         }
 
-        if (*mState == LEVEL_MUSIC && e->type == SDL_KEYDOWN)
+        if (*mState == LVL_MUSIC && e->type == SDL_KEYDOWN)
             switch (e->key.keysym.sym) {
-                case SDLK_r:
+                case SDLK_RETURN:
+                case SDLK_KP_ENTER:
                     *lState = 0;
                     break;
                 case SDLK_q:
@@ -250,8 +281,8 @@ int renderLevel(SDL_Event *e, struct level *cur_level, int *gState, int *lState,
             cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j] = N_BOX;
     }
 
-    int progress = RenderField(cur_level);
-    if (progress == cur_level->n_boxes && *mState == LEVEL_MUSIC) {
+    int progress = renderField(cur_level);
+    if (progress == cur_level->n_boxes && *mState == LVL_MUSIC) {
         *mState = SUCCESS_START;
         Mix_HaltMusic();
     }
@@ -259,7 +290,8 @@ int renderLevel(SDL_Event *e, struct level *cur_level, int *gState, int *lState,
     renderTexture(&gHeroTextures,
                   cur_level->hero.j * STEP + cur_level->OffsetW,
                   cur_level->hero.i * STEP + cur_level->OffsetH,
-                  HeroT[*hState], gRenderer);
+                  &HeroT[*hState], gRenderer);
+    return LEVEL;
 }
 
 int init()
@@ -330,20 +362,23 @@ int loadMedia()
         return 0;
     }
 
-    if (!loadTextureFromFile(&gHeroTextures, "./images/hero.bmp", gRenderer, STEP, STEP)) {
+    if (!loadTextureFromFile(&gHeroTextures, "./images/heroes_40.bmp", gRenderer)) {
         printf("Texture loading Error.\n");
         return 0;
     }
-    setTextures(HeroT, N_HERO_TYPES, STEP, STEP);
+    setTextures(HeroT, N_HERO_TYPES, HERO_SIZE, HERO_SIZE);
+    gHeroTextures.Height = STEP;
+    gHeroTextures.Width = STEP;
 
-    if (!loadTextureFromFile(&gFieldTextures, "./images/fields_new.png", gRenderer, STEP, STEP)) {
+    if (!loadTextureFromFile(&gFieldTextures, "./images/fields_40.bmp", gRenderer)) {
         printf("Texture loading Error.\n");
         return 0;
     }
-    setTextures(FieldT, N_FIELD_TYPES, STEP, STEP);
+    setTextures(FieldT, N_FIELD_TYPES, FITEM_SIZE, FITEM_SIZE);
+    gFieldTextures.Height = STEP;
+    gFieldTextures.Width = STEP;
 
     gFonts.steelpla = TTF_OpenFont("./fonts/steelpla.ttf", 24);
-    gFonts.lazy = TTF_OpenFont("./fonts/lazy.ttf", 24);
     return 1;
 }
 
@@ -357,14 +392,14 @@ int setTextures(SDL_Rect Textures[], int n, int w, int h)
     }
 }
 
-int RenderField(struct level *cur_level)
+int renderField(struct level *cur_level)
 {
     int progress = 0;
     int x = cur_level->OffsetW;
     int y = cur_level->OffsetH;
     for (int i = 0; i < N_FIELDS_HEIGHT; ++i) {
         for (int j = 0; j < N_FIELDS_WIDTH; ++j) {
-            renderTexture(&gFieldTextures, x, y, FieldT[cur_level->field[i][j]], gRenderer);
+            renderTexture(&gFieldTextures, x, y, &FieldT[cur_level->field[i][j]], gRenderer);
             x += STEP;
             if (cur_level->field[i][j] == D_BOX)
                 ++progress;

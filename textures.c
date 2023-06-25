@@ -3,7 +3,7 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 
-int loadTextureFromFile(struct LTexture *Texture, char *path, SDL_Renderer *Render, int w, int h)
+int loadTextureFromFile(struct LTexture *Texture, char *path, SDL_Renderer *Render)
 {
     freeTexture(Texture);
     SDL_Texture *newTexture = NULL;
@@ -27,26 +27,16 @@ int loadTextureFromFile(struct LTexture *Texture, char *path, SDL_Renderer *Rend
         return 0;
     }
 
-    struct SDL_Rect dstRect;
-    dstRect.x = 0;
-    dstRect.y = 0;
-    dstRect.w = w;
-    dstRect.h = h;
-    SDL_RenderCopy(Render, newTexture, 0, &dstRect);
-
-    Texture->Width = dstRect.w;
-    Texture->Height = dstRect.h;
-
+    SDL_RenderCopy(Render, newTexture, 0, 0);
     SDL_FreeSurface(loadedSurface);
-
     Texture->Texture = newTexture;
     return 1;
 }
 
-void renderTexture(struct LTexture *Texture, int x, int y, SDL_Rect srcRect, SDL_Renderer *Render)
+void renderTexture(struct LTexture *Texture, int x, int y, SDL_Rect *srcRect, SDL_Renderer *Render)
 {
     SDL_Rect renderQuad = {x, y, Texture->Width, Texture->Height};
-    SDL_RenderCopy(Render, Texture->Texture, &srcRect, &renderQuad);
+    SDL_RenderCopy(Render, Texture->Texture, srcRect, &renderQuad);
 }
 
 void renderText(char *text, SDL_Rect textRect, TTF_Font *Font, SDL_Renderer *Render)

@@ -12,8 +12,8 @@ struct LTexture {
 };
 
 void freeTexture(struct LTexture *Texture);
-void renderTexture(struct LTexture *Texture, int x, int y, SDL_Rect srcRect, SDL_Renderer *Render);
+void renderTexture(struct LTexture *Texture, int x, int y, SDL_Rect *srcRect, SDL_Renderer *Render);
 void renderText(char *text, SDL_Rect textRect, TTF_Font *Font, SDL_Renderer *Render);
-int loadTextureFromFile(struct LTexture *Texture, char *path, SDL_Renderer *Render, int w, int h);
+int loadTextureFromFile(struct LTexture *Texture, char *path, SDL_Renderer *Render);
 
 #endif
