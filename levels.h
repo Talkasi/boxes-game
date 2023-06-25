@@ -1,14 +1,11 @@
 #ifndef BOXES_GAME_LEVELS_H
 #define BOXES_GAME_LEVELS_H
 #include <inttypes.h>
-#define SCREEN_WIDTH 510
-#define SCREEN_HEIGHT 510
-#define STEP 51
 
 #define N_FIELDS_WIDTH 10
 #define N_FIELDS_HEIGHT 10
 
-#define N_LEVELS 2
+#define N_LEVELS 5
 
 enum field {
     EMPTY,

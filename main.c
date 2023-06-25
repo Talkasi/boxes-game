@@ -1,17 +1,13 @@
 #include "levels.h"
 #include "textures.h"
+#include "config.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 
-#define SCREEN_WIDTH 510
-#define SCREEN_HEIGHT 510
-#define STEP 51
-
 #define MSEC_IN_SEC 1000
-#define FPS 30
 
 int init();
 int loadMedia();
@@ -62,12 +58,12 @@ Mix_Music *gSuccessEndMusic = NULL;
 int main(int argc, char *args[])
 {
     if (!init()) {
-        printf("Failed to initialize!\n");
+        printf("Failed to initialize SDL.\n");
         return 1;
     }
 
     if (!loadMedia()) {
-        printf("Failed to load media!\n");
+        printf("Failed to load media.\n");
         return 1;
     }
 
@@ -335,13 +331,13 @@ int loadMedia()
     }
 
     if (!loadTextureFromFile(&gHeroTextures, "./images/hero.bmp", gRenderer, STEP, STEP)) {
-        printf("Texture image loading Error.\n");
+        printf("Texture loading Error.\n");
         return 0;
     }
     setTextures(HeroT, N_HERO_TYPES, STEP, STEP);
 
     if (!loadTextureFromFile(&gFieldTextures, "./images/fields_new.png", gRenderer, STEP, STEP)) {
-        printf("Texture image loading Error.\n");
+        printf("Texture loading Error.\n");
         return 0;
     }
     setTextures(FieldT, N_FIELD_TYPES, STEP, STEP);
