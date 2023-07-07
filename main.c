@@ -6,16 +6,19 @@
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define MSEC_IN_SEC 1000
 
 int init();
 int loadMedia();
 
-int renderField(struct level *cur_level);
-int renderStart(SDL_Event *e, int *gRunning, int *lState);
+int renderField(struct lvl *cur_level);
+void renderStart(SDL_Event *e, int *gState);
 int renderMenu(SDL_Event *e, int *gState, int *lState);
-int renderLevel(SDL_Event *e, struct level *cur_level, int *gState, int *lState, int *mState, int *hState);
+void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState);
+void renderLvlItems(int OffsetW, int OffsetH);
+int renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *gState);
 
 int inBorders(int curPos_i, int curPos_j, int curVel_i, int curVel_j);
 int canMove(int subFieldType);
@@ -27,17 +30,14 @@ enum hero_state { RIGHT,
                   SUCCESS,
                   N_HERO_TYPES };
 
-enum music_type {
-    NEXT_LVL,
-    LVL_MUSIC,
-    SUCCESS_START,
-    SUCCESS_END
-};
-
 enum game_state {
+    QUIT,
     START,
     MENU,
-    LEVEL
+    CHOOSE_LVL,
+    GET_LVL,
+    LVL,
+    COMPLETED
 };
 
 SDL_Window *gWindow = NULL;
@@ -57,10 +57,6 @@ struct fonts {
 struct LTexture gTextTexture;
 struct LTexture gStartTexture;
 
-Mix_Music *gMusic = NULL;
-Mix_Music *gSuccessStartMusic = NULL;
-Mix_Music *gSuccessEndMusic = NULL;
-
 #define INIT_ERR 1
 #define LOAD_ERR 2
 
@@ -72,98 +68,149 @@ int main(int argc, char *args[])
     if (!loadMedia())
         return LOAD_ERR;
 
-    int GameRunning = 1;
-    int cur_lvl_n = 1;
+    struct lvl_info lvl_info;
+    lvl_info.cur_n = 1;
+    lvl_info.info[0] = 1;
+    struct lvl cur_level;
+    getLvl(lvl_info.cur_n, &cur_level);
+    int HeroState = RIGHT;
+
     SDL_Event e;
     int GameState = START;
 
-    while (GameRunning) {
-        if (cur_lvl_n > N_LEVELS)
-            break;
+    while (GameState) {
+        uint32_t start, delay_time;
+        start = SDL_GetTicks();
 
-        struct level cur_level;
-        get_level(cur_lvl_n, &cur_level);
-        int LevelRunning = 1;
-        int MusicType = LVL_MUSIC;
-        int MusicState = 1;
-        int HeroState = RIGHT;
+        SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+        SDL_RenderClear(gRenderer);
 
-        while (LevelRunning) {
-            uint32_t start, delay_time;
-            start = SDL_GetTicks();
-
-            if (MusicState && GameState == LEVEL && Mix_PlayingMusic() == 0)
-                switch (MusicType) {
-                    case LVL_MUSIC:
-                        Mix_PlayMusic(gMusic, -1);
-                        break;
-                    case SUCCESS_START:
-                        Mix_PlayMusic(gSuccessStartMusic, 1);
-                        MusicType = SUCCESS_END;
-                        break;
-                    case SUCCESS_END:
-                        Mix_PlayMusic(gSuccessEndMusic, 1);
-                        HeroState = SUCCESS;
-                        MusicType = NEXT_LVL;
-                        break;
-                    case NEXT_LVL:
-                        LevelRunning = 0;
-                        ++cur_lvl_n;
-                        break;
-                    default:
-                        break;
-                }
-
-            SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-            SDL_RenderClear(gRenderer);
-
-            switch (GameState) {
-                case (START):
-                    GameState = renderStart(&e, &GameRunning, &LevelRunning);
-                    break;
-                case (LEVEL):
-                    GameState = renderLevel(&e, &cur_level, &GameRunning, &LevelRunning, &MusicType, &HeroState);
-                    break;
-                default:
-                    break;
-            }
-
-            SDL_RenderPresent(gRenderer);
-            delay_time = MSEC_IN_SEC / FPS - start + SDL_GetTicks();
-            if (delay_time > 0)
-                SDL_Delay(delay_time);
+        switch (GameState) {
+            case (START):
+                renderStart(&e, &GameState);
+                break;
+            case (CHOOSE_LVL):
+                renderLvlMenu(&e, &lvl_info.cur_n, &GameState);
+                break;
+            case (LVL):
+                lvl_info.cur_n += renderLvl(&e, &cur_level, &HeroState, &GameState);
+                if (lvl_info.cur_n > N_LEVELS)
+                    GameState = COMPLETED;
+                break;
+            case (GET_LVL):
+                getLvl(lvl_info.cur_n, &cur_level);
+                HeroState = RIGHT;
+                GameState = LVL;
+                break;
+            default:
+                break;
         }
+
+        SDL_RenderPresent(gRenderer);
+        delay_time = MSEC_IN_SEC / FPS - start + SDL_GetTicks();
+        if (delay_time > 0)
+            SDL_Delay(delay_time);
     }
 
     return 0;
 }
 
-int renderStart(SDL_Event *e, int *gRunning, int *lState)
+void renderStart(SDL_Event *e, int *gState)
 {
-    int gState = START;
     while (SDL_PollEvent(e) != 0) {
         if (e->type == SDL_QUIT) {
-            *gRunning = 0;
-            *lState = 0;
+            *gState = QUIT;
             break;
         }
 
         if (e->type == SDL_KEYDOWN)
             switch (e->key.keysym.sym) {
                 case SDLK_q:
-                    *gRunning = 0;
-                    *lState = 0;
+                    *gState = QUIT;
                     break;
                 case SDLK_RETURN:
                 case SDLK_KP_ENTER:
-                    gState = LEVEL;
+                    *gState = CHOOSE_LVL;
                     break;
                 default:
                     break;
             }
     }
+
+    // TODO(Talkasi): Press enter to continue image
     renderTexture(&gStartTexture, 0, 0, NULL, gRenderer);
-    return gState;
+}
+
+void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
+{
+    int OffsetW = (SCREEN_WIDTH - N_COLS * ITEMS_WIDTH) / (N_COLS + 1);
+    int OffsetH = (SCREEN_WIDTH - N_ROWS * ITEMS_WIDTH) / (N_ROWS + 1);
+    int x = OffsetW + (OffsetW + ITEMS_WIDTH) * ((*lvl_n - 1) % N_COLS) - ITEMS_WIDTH / 2;
+    int y = OffsetH + (OffsetH + ITEMS_WIDTH) * ((*lvl_n - 1) / N_ROWS);
+
+    while (SDL_PollEvent(e) != 0) {
+        if (e->type == SDL_QUIT) {
+            *gState = QUIT;
+            break;
+        }
+
+        if (e->type == SDL_KEYDOWN)
+            switch (e->key.keysym.sym) {
+                case SDLK_q:
+                    *gState = QUIT;
+                    break;
+                case SDLK_RETURN:
+                case SDLK_KP_ENTER:
+                    *gState = GET_LVL;
+                    break;
+                case SDLK_UP:
+                    if (*lvl_n > N_COLS)
+                        *lvl_n -= N_COLS;
+                    break;
+                case SDLK_DOWN:
+                    if (*lvl_n + N_COLS <= N_LEVELS)
+                        *lvl_n += N_COLS;
+                    break;
+                case SDLK_LEFT:
+                    if (*lvl_n > 1)
+                        *lvl_n -= 1;
+                    break;
+                case SDLK_RIGHT:
+                    if (*lvl_n < N_LEVELS)
+                        *lvl_n += 1;
+                    break;
+                default:
+                    break;
+            }
+    }
+
+    SDL_SetRenderDrawColor(gRenderer, 0, 0, 255, 0);
+    SDL_Rect dst = {x, y, ITEMS_WIDTH, ITEMS_WIDTH};
+    SDL_RenderDrawRect(gRenderer, &dst);
+
+    renderLvlItems(OffsetW, OffsetH);
+}
+
+void renderLvlItems(int OffsetW, int OffsetH)
+{
+    char text[2] = "";
+    SDL_Rect textRect = {OffsetW, OffsetH, ITEMS_WIDTH, ITEMS_WIDTH};
+    for (int i = 0; i < N_ROWS; ++i) {
+        for (int j = 0; j < N_COLS; ++j) {
+            if (i * N_COLS + j + 1 > N_LEVELS)
+                return;
+            sprintf(text, "%d", i * N_COLS + j + 1);
+            if ((i * N_COLS + j + 1) / 10 == 0)
+                textRect.x -= ITEMS_WIDTH / 2;
+            // !!! TODO(Talkasi): render numbers by textures -- 0.44% CPU instead of 0.20
+            renderText(text, textRect, gFonts.steelpla, gRenderer);
+            textRect.x += ITEMS_WIDTH + OffsetW;
+            if ((i * N_COLS + j + 1) / 10 == 0)
+                textRect.x += ITEMS_WIDTH / 2;
+        }
+        textRect.x = OffsetW;
+        textRect.y += ITEMS_WIDTH + OffsetH;
+    }
 }
 
 int renderMenu(SDL_Event *e, int *gState, int *lState)
@@ -183,7 +230,7 @@ int renderMenu(SDL_Event *e, int *gState, int *lState)
                     *lState = 0;
                     break;
                 case SDLK_UP:
-                    mState = LEVEL;
+                    mState = LVL;
                     break;
                 case SDLK_DOWN:
                     mState = MENU;
@@ -194,7 +241,7 @@ int renderMenu(SDL_Event *e, int *gState, int *lState)
     }
 
     SDL_Rect textRect = {SCREEN_WIDTH / 2 - 100 / 2, SCREEN_HEIGHT * 3 / 4, 100, 24};
-    renderText("Menu", textRect, gFonts.steelpla, gRenderer);
+    //    renderText("Menu", textRect, gFonts.steelpla, gRenderer);
     return mState;
 }
 
@@ -214,26 +261,24 @@ int isBox(int subFieldType)
     return subFieldType == N_BOX || subFieldType == D_BOX;
 }
 
-int renderLevel(SDL_Event *e, struct level *cur_level, int *gState, int *lState, int *mState, int *hState)
+int renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *gState)
 {
     int vel_i = 0, vel_j = 0;
 
     while (SDL_PollEvent(e) != 0) {
         if (e->type == SDL_QUIT) {
-            *gState = 0;
-            *lState = 0;
+            *gState = QUIT;
             break;
         }
 
-        if (*mState == LVL_MUSIC && e->type == SDL_KEYDOWN)
+        if (e->type == SDL_KEYDOWN)
             switch (e->key.keysym.sym) {
                 case SDLK_RETURN:
                 case SDLK_KP_ENTER:
-                    *lState = 0;
+                    *gState = GET_LVL;
                     break;
                 case SDLK_q:
-                    *gState = 0;
-                    *lState = 0;
+                    *gState = QUIT;
                     break;
                 case SDLK_UP:
                     vel_i = -1;
@@ -282,16 +327,17 @@ int renderLevel(SDL_Event *e, struct level *cur_level, int *gState, int *lState,
     }
 
     int progress = renderField(cur_level);
-    if (progress == cur_level->n_boxes && *mState == LVL_MUSIC) {
-        *mState = SUCCESS_START;
-        Mix_HaltMusic();
-    }
 
     renderTexture(&gHeroTextures,
                   cur_level->hero.j * STEP + cur_level->OffsetW,
                   cur_level->hero.i * STEP + cur_level->OffsetH,
                   &HeroT[*hState], gRenderer);
-    return LEVEL;
+
+    if (progress == cur_level->n_boxes) {
+        *gState = GET_LVL;
+        return 1;
+    }
+    return 0;
 }
 
 int init()
@@ -344,25 +390,8 @@ int init()
 int loadMedia()
 {
     Mix_VolumeMusic((int) (MIX_MAX_VOLUME * 0.1));
-    gMusic = Mix_LoadMUS("music/level.mp3");
-    if (gMusic == NULL) {
-        printf("Failed to load music. SDL_mixer Error: %s\n", Mix_GetError());
-        return 0;
-    }
 
-    gSuccessStartMusic = Mix_LoadMUS("music/jingle_01.mp3");
-    if (gSuccessStartMusic == NULL) {
-        printf("Failed to load music. SDL_mixer Error: %s\n", Mix_GetError());
-        return 0;
-    }
-
-    gSuccessEndMusic = Mix_LoadMUS("music/jingle_02.mp3");
-    if (gSuccessEndMusic == NULL) {
-        printf("Failed to load music. SDL_mixer Error: %s\n", Mix_GetError());
-        return 0;
-    }
-
-    if (!loadTextureFromFile(&gHeroTextures, "./images/heroes_40.bmp", gRenderer)) {
+    if (!loadTextureFromFile(&gHeroTextures, "./images/hero.bmp", gRenderer)) {
         printf("Texture loading Error.\n");
         return 0;
     }
@@ -370,7 +399,7 @@ int loadMedia()
     gHeroTextures.Height = STEP;
     gHeroTextures.Width = STEP;
 
-    if (!loadTextureFromFile(&gFieldTextures, "./images/fields_40.bmp", gRenderer)) {
+    if (!loadTextureFromFile(&gFieldTextures, "./images/fields_new.png", gRenderer)) {
         printf("Texture loading Error.\n");
         return 0;
     }
@@ -392,7 +421,7 @@ int setTextures(SDL_Rect Textures[], int n, int w, int h)
     }
 }
 
-int renderField(struct level *cur_level)
+int renderField(struct lvl *cur_level)
 {
     int progress = 0;
     int x = cur_level->OffsetW;

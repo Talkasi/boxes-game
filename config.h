@@ -5,8 +5,12 @@
 #define SCREEN_HEIGHT 510
 #define STEP 51
 
-#define HERO_SIZE 40
-#define FITEM_SIZE 40
+#define HERO_SIZE 51
+#define FITEM_SIZE 51
+
+#define N_ROWS 3
+#define N_COLS 3
+#define ITEMS_WIDTH 30
 
 #define FPS 30
 #endif
