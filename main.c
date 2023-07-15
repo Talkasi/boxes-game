@@ -6,7 +6,6 @@
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 #define MSEC_IN_SEC 1000
 
@@ -15,7 +14,6 @@ int loadMedia();
 
 int renderField(struct lvl *cur_level);
 void renderStart(SDL_Event *e, int *gState);
-int renderMenu(SDL_Event *e, int *gState, int *lState);
 void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState);
 void renderLvlItems(int OffsetW, int OffsetH);
 int renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *gState);
@@ -33,7 +31,6 @@ enum hero_state { RIGHT,
 enum game_state {
     QUIT,
     START,
-    MENU,
     CHOOSE_LVL,
     GET_LVL,
     LVL,
@@ -211,38 +208,6 @@ void renderLvlItems(int OffsetW, int OffsetH)
         textRect.x = OffsetW;
         textRect.y += ITEMS_WIDTH + OffsetH;
     }
-}
-
-int renderMenu(SDL_Event *e, int *gState, int *lState)
-{
-    int mState = 0;
-    while (SDL_PollEvent(e) != 0) {
-        if (e->type == SDL_QUIT) {
-            *gState = 0;
-            *lState = 0;
-            break;
-        }
-
-        if (e->type == SDL_KEYDOWN)
-            switch (e->key.keysym.sym) {
-                case SDLK_q:
-                    *gState = 0;
-                    *lState = 0;
-                    break;
-                case SDLK_UP:
-                    mState = LVL;
-                    break;
-                case SDLK_DOWN:
-                    mState = MENU;
-                    break;
-                default:
-                    break;
-            }
-    }
-
-    SDL_Rect textRect = {SCREEN_WIDTH / 2 - 100 / 2, SCREEN_HEIGHT * 3 / 4, 100, 24};
-    //    renderText("Menu", textRect, gFonts.steelpla, gRenderer);
-    return mState;
 }
 
 int inBorders(int curPos_i, int curPos_j, int curVel_i, int curVel_j)
