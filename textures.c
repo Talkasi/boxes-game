@@ -39,10 +39,10 @@ void renderTexture(struct LTexture *Texture, int x, int y, SDL_Rect *srcRect, SD
     SDL_RenderCopy(Render, Texture->Texture, srcRect, &renderQuad);
 }
 
-void renderText(char *text, SDL_Rect textRect, TTF_Font *Font, SDL_Renderer *Render)
+void renderText(char *text, SDL_Rect textRect, TTF_Font *Font, Uint32 wrapLength, SDL_Renderer *Render)
 {
     SDL_Color Color = {0, 0, 0, 0};
-    SDL_Surface *surfaceMessage = TTF_RenderText_Solid(Font, text, Color);
+    SDL_Surface *surfaceMessage = TTF_RenderText_Solid_Wrapped(Font, text, Color, wrapLength);
     SDL_Texture *Message = SDL_CreateTextureFromSurface(Render, surfaceMessage);
     SDL_RenderCopy(Render, Message, NULL, &textRect);
     SDL_DestroyTexture(Message);

@@ -37,6 +37,10 @@ enum game_state {
     COMPLETED
 };
 
+#define LETTERS_MAX 21
+#define LETTER_HEIGHT 30
+#define LETTER_WIDTH 20
+
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
 
@@ -50,9 +54,6 @@ struct fonts {
     TTF_Font *lazy;
     TTF_Font *steelpla;
 } gFonts;
-
-struct LTexture gTextTexture;
-struct LTexture gStartTexture;
 
 #define INIT_ERR 1
 #define LOAD_ERR 2
@@ -138,8 +139,19 @@ void renderStart(SDL_Event *e, int *gState)
             }
     }
 
-    // TODO(Talkasi): Press enter to continue image
-    renderTexture(&gStartTexture, 0, 0, NULL, gRenderer);
+#define LINE_LENGTH 22
+#define N_LINES 4
+
+    char text[LINE_LENGTH * N_LINES] = " This is my version \n"
+                                       "   of boxxle game   \n"
+                                       "                    \n"
+                                       "Press Enter to enjoy.";
+
+    SDL_Rect Rect = {(SCREEN_WIDTH - LINE_LENGTH * LETTER_WIDTH) / 2,
+                     (SCREEN_HEIGHT - LETTER_HEIGHT * N_LINES) / 2,
+                     LINE_LENGTH * LETTER_WIDTH,
+                     LETTER_HEIGHT * N_LINES};
+    renderText(text, Rect, gFonts.lazy, 0, gRenderer);
 }
 
 #define LVL_POINTER_W (ITEM_SIDE_LENGTH * 6 / 5)
@@ -149,8 +161,10 @@ void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
 {
     int OffsetW = (SCREEN_WIDTH - N_COLS * ITEM_SIDE_LENGTH) / (N_COLS + 1);
     int OffsetH = (SCREEN_WIDTH - N_ROWS * ITEM_SIDE_LENGTH) / (N_ROWS + 1);
-    int x = OffsetW + (OffsetW + ITEM_SIDE_LENGTH) * ((*lvl_n - 1) % N_COLS) - ITEM_SIDE_LENGTH / 2 - (LVL_POINTER_W - ITEM_SIDE_LENGTH) / 2;
-    int y = OffsetH + (OffsetH + ITEM_SIDE_LENGTH) * ((*lvl_n - 1) / N_ROWS) - (LVL_POINTER_H - ITEM_SIDE_LENGTH) / 2;
+    int x = OffsetW + (OffsetW + ITEM_SIDE_LENGTH) * ((*lvl_n - 1) % N_COLS) -
+            ITEM_SIDE_LENGTH / 2 - (LVL_POINTER_W - ITEM_SIDE_LENGTH) / 2;
+    int y = OffsetH + (OffsetH + ITEM_SIDE_LENGTH) * ((*lvl_n - 1) / N_ROWS) -
+            (LVL_POINTER_H - ITEM_SIDE_LENGTH) / 2;
 
     while (SDL_PollEvent(e) != 0) {
         if (e->type == SDL_QUIT) {
@@ -208,7 +222,7 @@ void renderLvlItems(int OffsetW, int OffsetH)
             sprintf(text, "%d", i * N_COLS + j + 1);
             if ((i * N_COLS + j + 1) / 10 == 0)
                 textRect.x -= rectW / 2;
-            renderText(text, textRect, gFonts.steelpla, gRenderer);
+            renderText(text, textRect, gFonts.lazy, 2 * rectW, gRenderer);
             SDL_RenderDrawRect(gRenderer, &textRect);
             textRect.x += rectW + OffsetW;
             if ((i * N_COLS + j + 1) / 10 == 0)
@@ -235,23 +249,13 @@ int isBox(int subFieldType)
     return subFieldType == N_BOX || subFieldType == D_BOX;
 }
 
-#define LETTERS_MAX 11
-#define LETTER_HEIGHT 30
-#define LETTER_WIDTH 20
 void renderLvlInfo(int lvl_n, int n_steps)
 {
     char text[LETTERS_MAX] = "";
-    sprintf(text, "Lvl No. %d", lvl_n);
-    int text_w = (int) strlen(text) * LETTER_WIDTH;
-    SDL_Rect Rect = {SCREEN_WIDTH - text_w, 0, text_w, LETTER_HEIGHT};
-    renderText(text, Rect, gFonts.steelpla, gRenderer);
-
-    sprintf(text, "Steps: %d", n_steps);
-    text_w = (int) strlen(text) * LETTER_WIDTH;
-    Rect.x = SCREEN_WIDTH - text_w;
-    Rect.y = LETTER_HEIGHT;
-    Rect.w = text_w;
-    renderText(text, Rect, gFonts.steelpla, gRenderer);
+    sprintf(text, "Lvl No. %d\nSteps: %d", lvl_n, n_steps);
+    SDL_Rect Rect = {SCREEN_WIDTH - LETTERS_MAX * LETTER_WIDTH / 2, 0,
+                     LETTERS_MAX * LETTER_WIDTH / 2, LETTER_HEIGHT * 3};
+    renderText(text, Rect, gFonts.lazy, LETTERS_MAX * LETTER_WIDTH / 2, gRenderer);
 }
 
 void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *n_steps, int *lvl_n, int *gState)
@@ -404,7 +408,7 @@ int loadMedia()
     gFieldTextures.Height = STEP;
     gFieldTextures.Width = STEP;
 
-    gFonts.steelpla = TTF_OpenFont("./fonts/steelpla.ttf", 24);
+    gFonts.lazy = TTF_OpenFont("./fonts/lazy.ttf", 24);
     return 1;
 }
 
