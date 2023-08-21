@@ -10,7 +10,7 @@
 
 #define N_ROWS 3
 #define N_COLS 3
-#define ITEMS_WIDTH 30
+#define ITEM_SIDE_LENGTH 30
 
 #define FPS 30
 #endif

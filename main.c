@@ -16,7 +16,7 @@ int renderField(struct lvl *cur_level);
 void renderStart(SDL_Event *e, int *gState);
 void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState);
 void renderLvlItems(int OffsetW, int OffsetH);
-int renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *gState);
+void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *n_steps, int *lvl_n, int *gState);
 
 int inBorders(int curPos_i, int curPos_j, int curVel_i, int curVel_j);
 int canMove(int subFieldType);
@@ -68,9 +68,10 @@ int main(int argc, char *args[])
     struct lvl_info lvl_info;
     lvl_info.cur_n = 1;
     lvl_info.info[0] = 1;
+
+    int n_steps;
     struct lvl cur_level;
-    getLvl(lvl_info.cur_n, &cur_level);
-    int HeroState = RIGHT;
+    int HeroState;
 
     SDL_Event e;
     int GameState = START;
@@ -90,7 +91,7 @@ int main(int argc, char *args[])
                 renderLvlMenu(&e, &lvl_info.cur_n, &GameState);
                 break;
             case (LVL):
-                lvl_info.cur_n += renderLvl(&e, &cur_level, &HeroState, &GameState);
+                renderLvl(&e, &cur_level, &HeroState, &n_steps, &lvl_info.cur_n, &GameState);
                 if (lvl_info.cur_n > N_LEVELS)
                     GameState = COMPLETED;
                 break;
@@ -98,7 +99,10 @@ int main(int argc, char *args[])
                 getLvl(lvl_info.cur_n, &cur_level);
                 HeroState = RIGHT;
                 GameState = LVL;
+                n_steps = 0;
                 break;
+            case (COMPLETED):
+                GameState = QUIT;
             default:
                 break;
         }
@@ -138,12 +142,15 @@ void renderStart(SDL_Event *e, int *gState)
     renderTexture(&gStartTexture, 0, 0, NULL, gRenderer);
 }
 
+#define LVL_POINTER_W (ITEM_SIDE_LENGTH * 6 / 5)
+#define LVL_POINTER_H (ITEM_SIDE_LENGTH * 3 / 2)
+
 void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
 {
-    int OffsetW = (SCREEN_WIDTH - N_COLS * ITEMS_WIDTH) / (N_COLS + 1);
-    int OffsetH = (SCREEN_WIDTH - N_ROWS * ITEMS_WIDTH) / (N_ROWS + 1);
-    int x = OffsetW + (OffsetW + ITEMS_WIDTH) * ((*lvl_n - 1) % N_COLS) - ITEMS_WIDTH / 2;
-    int y = OffsetH + (OffsetH + ITEMS_WIDTH) * ((*lvl_n - 1) / N_ROWS);
+    int OffsetW = (SCREEN_WIDTH - N_COLS * ITEM_SIDE_LENGTH) / (N_COLS + 1);
+    int OffsetH = (SCREEN_WIDTH - N_ROWS * ITEM_SIDE_LENGTH) / (N_ROWS + 1);
+    int x = OffsetW + (OffsetW + ITEM_SIDE_LENGTH) * ((*lvl_n - 1) % N_COLS) - ITEM_SIDE_LENGTH / 2 - (LVL_POINTER_W - ITEM_SIDE_LENGTH) / 2;
+    int y = OffsetH + (OffsetH + ITEM_SIDE_LENGTH) * ((*lvl_n - 1) / N_ROWS) - (LVL_POINTER_H - ITEM_SIDE_LENGTH) / 2;
 
     while (SDL_PollEvent(e) != 0) {
         if (e->type == SDL_QUIT) {
@@ -181,8 +188,8 @@ void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
             }
     }
 
-    SDL_SetRenderDrawColor(gRenderer, 0, 0, 255, 0);
-    SDL_Rect dst = {x, y, ITEMS_WIDTH, ITEMS_WIDTH};
+    SDL_SetRenderDrawColor(gRenderer, 0x0, 0x0, 0x0, 0x0);
+    SDL_Rect dst = {x, y, LVL_POINTER_W, LVL_POINTER_H};
     SDL_RenderDrawRect(gRenderer, &dst);
 
     renderLvlItems(OffsetW, OffsetH);
@@ -191,22 +198,24 @@ void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
 void renderLvlItems(int OffsetW, int OffsetH)
 {
     char text[2] = "";
-    SDL_Rect textRect = {OffsetW, OffsetH, ITEMS_WIDTH, ITEMS_WIDTH};
+    int rectW = ITEM_SIDE_LENGTH;
+    int rectH = ITEM_SIDE_LENGTH;
+    SDL_Rect textRect = {OffsetW, OffsetH, rectW, rectH};
     for (int i = 0; i < N_ROWS; ++i) {
         for (int j = 0; j < N_COLS; ++j) {
             if (i * N_COLS + j + 1 > N_LEVELS)
                 return;
             sprintf(text, "%d", i * N_COLS + j + 1);
             if ((i * N_COLS + j + 1) / 10 == 0)
-                textRect.x -= ITEMS_WIDTH / 2;
-            // !!! TODO(Talkasi): render numbers by textures -- 0.44% CPU instead of 0.20
+                textRect.x -= rectW / 2;
             renderText(text, textRect, gFonts.steelpla, gRenderer);
-            textRect.x += ITEMS_WIDTH + OffsetW;
+            SDL_RenderDrawRect(gRenderer, &textRect);
+            textRect.x += rectW + OffsetW;
             if ((i * N_COLS + j + 1) / 10 == 0)
-                textRect.x += ITEMS_WIDTH / 2;
+                textRect.x += rectW / 2;
         }
         textRect.x = OffsetW;
-        textRect.y += ITEMS_WIDTH + OffsetH;
+        textRect.y += rectH + OffsetH;
     }
 }
 
@@ -226,7 +235,26 @@ int isBox(int subFieldType)
     return subFieldType == N_BOX || subFieldType == D_BOX;
 }
 
-int renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *gState)
+#define LETTERS_MAX 11
+#define LETTER_HEIGHT 30
+#define LETTER_WIDTH 20
+void renderLvlInfo(int lvl_n, int n_steps)
+{
+    char text[LETTERS_MAX] = "";
+    sprintf(text, "Lvl No. %d", lvl_n);
+    int text_w = (int) strlen(text) * LETTER_WIDTH;
+    SDL_Rect Rect = {SCREEN_WIDTH - text_w, 0, text_w, LETTER_HEIGHT};
+    renderText(text, Rect, gFonts.steelpla, gRenderer);
+
+    sprintf(text, "Steps: %d", n_steps);
+    text_w = (int) strlen(text) * LETTER_WIDTH;
+    Rect.x = SCREEN_WIDTH - text_w;
+    Rect.y = LETTER_HEIGHT;
+    Rect.w = text_w;
+    renderText(text, Rect, gFonts.steelpla, gRenderer);
+}
+
+void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *n_steps, int *lvl_n, int *gState)
 {
     int vel_i = 0, vel_j = 0;
 
@@ -270,25 +298,29 @@ int renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *gState)
             }
     }
 
-    if (inBorders(cur_level->hero.i, cur_level->hero.j, vel_i, vel_j) &&
-        canMove(cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j])) {
-        cur_level->hero.i += vel_i;
-        cur_level->hero.j += vel_j;
-    } else if (inBorders(cur_level->hero.i, cur_level->hero.j, vel_i * 2, vel_j * 2) &&
-               isBox(cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j]) &&
-               canMove(cur_level->field[cur_level->hero.i + vel_i * 2][cur_level->hero.j + vel_j * 2])) {
-        cur_level->hero.i += vel_i;
-        cur_level->hero.j += vel_j;
+    if (!(vel_i == 0 && vel_j == 0)) {
+        if (inBorders(cur_level->hero.i, cur_level->hero.j, vel_i, vel_j) &&
+            canMove(cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j])) {
+            cur_level->hero.i += vel_i;
+            cur_level->hero.j += vel_j;
+            ++*n_steps;
+        } else if (inBorders(cur_level->hero.i, cur_level->hero.j, vel_i * 2, vel_j * 2) &&
+                   isBox(cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j]) &&
+                   canMove(cur_level->field[cur_level->hero.i + vel_i * 2][cur_level->hero.j + vel_j * 2])) {
+            cur_level->hero.i += vel_i;
+            cur_level->hero.j += vel_j;
+            ++*n_steps;
 
-        if (cur_level->field[cur_level->hero.i][cur_level->hero.j] == N_BOX)
-            cur_level->field[cur_level->hero.i][cur_level->hero.j] = EMPTY;
-        else if (cur_level->field[cur_level->hero.i][cur_level->hero.j] == D_BOX)
-            cur_level->field[cur_level->hero.i][cur_level->hero.j] = DST;
+            if (cur_level->field[cur_level->hero.i][cur_level->hero.j] == N_BOX)
+                cur_level->field[cur_level->hero.i][cur_level->hero.j] = EMPTY;
+            else if (cur_level->field[cur_level->hero.i][cur_level->hero.j] == D_BOX)
+                cur_level->field[cur_level->hero.i][cur_level->hero.j] = DST;
 
-        if (cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j] == DST)
-            cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j] = D_BOX;
-        else if (cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j] == EMPTY)
-            cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j] = N_BOX;
+            if (cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j] == DST)
+                cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j] = D_BOX;
+            else if (cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j] == EMPTY)
+                cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j] = N_BOX;
+        }
     }
 
     int progress = renderField(cur_level);
@@ -298,11 +330,11 @@ int renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *gState)
                   cur_level->hero.i * STEP + cur_level->OffsetH,
                   &HeroT[*hState], gRenderer);
 
+    renderLvlInfo(*lvl_n, *n_steps);
     if (progress == cur_level->n_boxes) {
         *gState = GET_LVL;
-        return 1;
+        ++*lvl_n;
     }
-    return 0;
 }
 
 int init()
@@ -336,7 +368,7 @@ int init()
         return 0;
     }
 
-    SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+    SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0);
 
     int imgFlags = IMG_INIT_PNG;
     if (!(IMG_Init(imgFlags) & imgFlags)) {
