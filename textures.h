@@ -1,5 +1,6 @@
 #ifndef BOXES_GAME_TEXTURES_H
 #define BOXES_GAME_TEXTURES_H
+#include "config.h"
 #include <SDL2/SDL_ttf.h>
 typedef struct SDL_Texture SDL_Texture;
 typedef struct SDL_Renderer SDL_Renderer;

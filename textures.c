@@ -10,27 +10,26 @@ int loadTextureFromFile(struct LTexture *Texture, char *path, SDL_Renderer *Rend
 
     SDL_Surface *loadedSurface = IMG_Load(path);
     if (loadedSurface == NULL) {
-        printf("SDL_image load Error: %s\n", IMG_GetError());
-        return 0;
+        printf("SDL_IMG_LOAD_ERR: %s\n", IMG_GetError());
+        return SDL_IMG_LOAD_ERR;
     }
 
     if (SDL_ConvertSurface(loadedSurface, loadedSurface->format, 0) == NULL) {
-        printf("Unable to optimize image %s! SDL Error: %s\n", path, SDL_GetError());
-        return 0;
+        printf("IMG: %s\nSDL_IMG_OPT_ERR: %s\n", path, SDL_GetError());
+        return SDL_IMG_OPT_ERR;
     }
 
     SDL_SetColorKey(loadedSurface, SDL_TRUE, SDL_MapRGB(loadedSurface->format, 0, 0xFF, 0));
-
     newTexture = SDL_CreateTextureFromSurface(Render, loadedSurface);
     if (newTexture == NULL) {
-        printf("SDL texture creating Error: %s\n", SDL_GetError());
-        return 0;
+        printf("SDL_CRT_TXTR_ERR: %s\n", SDL_GetError());
+        return SDL_CRT_TXTR_ERR;
     }
 
     SDL_RenderCopy(Render, newTexture, 0, 0);
     SDL_FreeSurface(loadedSurface);
     Texture->Texture = newTexture;
-    return 1;
+    return 0;
 }
 
 void renderTexture(struct LTexture *Texture, int x, int y, SDL_Rect *srcRect, SDL_Renderer *Render)

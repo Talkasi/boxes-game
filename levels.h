@@ -1,11 +1,7 @@
 #ifndef BOXES_GAME_LEVELS_H
 #define BOXES_GAME_LEVELS_H
+#include "config.h"
 #include <inttypes.h>
-
-#define N_FIELDS_WIDTH 10
-#define N_FIELDS_HEIGHT 10
-
-#define N_LEVELS 5
 
 enum field {
     EMPTY,
@@ -16,7 +12,7 @@ enum field {
     N_FIELD_TYPES
 };
 
-typedef uint8_t lvl_field[N_FIELDS_HEIGHT][N_FIELDS_WIDTH];
+typedef uint8_t lvl_field[NTILES_HEIGHT][NTILES_WIDTH];
 typedef uint8_t lvl_info_arr[N_LEVELS];
 
 struct point {
@@ -37,6 +33,5 @@ struct lvl_info {
     lvl_info_arr info;
 };
 
-void getLvl(int n, struct lvl *lмl_dst);
-
+void getLvl(int n, struct lvl *lvl_dst);
 #endif

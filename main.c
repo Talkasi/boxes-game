@@ -11,6 +11,7 @@
 
 int init();
 int loadMedia();
+int setTextures(SDL_Rect Textures[], int n, int w, int h);
 
 int renderField(struct lvl *cur_level);
 void renderStart(SDL_Event *e, int *gState);
@@ -20,8 +21,6 @@ void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *n_steps, i
 
 int inBorders(int curPos_i, int curPos_j, int curVel_i, int curVel_j);
 int canMove(int subFieldType);
-
-int setTextures(SDL_Rect Textures[], int n, int w, int h);
 
 enum hero_state { RIGHT,
                   LEFT,
@@ -37,34 +36,19 @@ enum game_state {
     COMPLETED
 };
 
-#define LETTERS_MAX 21
-#define LETTER_HEIGHT 30
-#define LETTER_WIDTH 20
-
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
-
 struct LTexture gHeroTextures;
-SDL_Rect HeroT[N_HERO_TYPES];
-
 struct LTexture gFieldTextures;
+SDL_Rect HeroT[N_HERO_TYPES];
 SDL_Rect FieldT[N_FIELD_TYPES];
-
-struct fonts {
-    TTF_Font *lazy;
-    TTF_Font *steelpla;
-} gFonts;
-
-#define INIT_ERR 1
-#define LOAD_ERR 2
+TTF_Font *lazy_font;
 
 int main(int argc, char *args[])
 {
-    if (!init())
-        return INIT_ERR;
-
-    if (!loadMedia())
-        return LOAD_ERR;
+    int rc;
+    if ((rc = init()) != 0 || (rc = loadMedia()) != 0)
+        return rc;
 
     struct lvl_info lvl_info;
     lvl_info.cur_n = 1;
@@ -76,8 +60,7 @@ int main(int argc, char *args[])
 
     SDL_Event e;
     int GameState = START;
-
-    while (GameState) {
+    while (GameState != QUIT) {
         uint32_t start, delay_time;
         start = SDL_GetTicks();
 
@@ -85,12 +68,6 @@ int main(int argc, char *args[])
         SDL_RenderClear(gRenderer);
 
         switch (GameState) {
-            case (START):
-                renderStart(&e, &GameState);
-                break;
-            case (CHOOSE_LVL):
-                renderLvlMenu(&e, &lvl_info.cur_n, &GameState);
-                break;
             case (LVL):
                 renderLvl(&e, &cur_level, &HeroState, &n_steps, &lvl_info.cur_n, &GameState);
                 if (lvl_info.cur_n > N_LEVELS)
@@ -101,6 +78,12 @@ int main(int argc, char *args[])
                 HeroState = RIGHT;
                 GameState = LVL;
                 n_steps = 0;
+                break;
+            case (START):
+                renderStart(&e, &GameState);
+                break;
+            case (CHOOSE_LVL):
+                renderLvlMenu(&e, &lvl_info.cur_n, &GameState);
                 break;
             case (COMPLETED):
                 GameState = QUIT;
@@ -139,32 +122,26 @@ void renderStart(SDL_Event *e, int *gState)
             }
     }
 
-#define LINE_LENGTH 22
-#define N_LINES 4
+    char text[STRT_LINE_LENGTH * STRT_NLINES] = " This is my version \n"
+                                                "   of boxxle game   \n"
+                                                "                    \n"
+                                                "Press Enter to enjoy.";
 
-    char text[LINE_LENGTH * N_LINES] = " This is my version \n"
-                                       "   of boxxle game   \n"
-                                       "                    \n"
-                                       "Press Enter to enjoy.";
-
-    SDL_Rect Rect = {(SCREEN_WIDTH - LINE_LENGTH * LETTER_WIDTH) / 2,
-                     (SCREEN_HEIGHT - LETTER_HEIGHT * N_LINES) / 2,
-                     LINE_LENGTH * LETTER_WIDTH,
-                     LETTER_HEIGHT * N_LINES};
-    renderText(text, Rect, gFonts.lazy, 0, gRenderer);
+    SDL_Rect Rect = {(SCREEN_WIDTH - STRT_LINE_LENGTH * START_LETTERW) / 2,
+                     (SCREEN_HEIGHT - STRT_NLINES * START_LETTERH) / 2,
+                     STRT_LINE_LENGTH * START_LETTERW,
+                     STRT_NLINES * START_LETTERH};
+    renderText(text, Rect, lazy_font, 0, gRenderer);
 }
-
-#define LVL_POINTER_W (ITEM_SIDE_LENGTH * 6 / 5)
-#define LVL_POINTER_H (ITEM_SIDE_LENGTH * 3 / 2)
 
 void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
 {
-    int OffsetW = (SCREEN_WIDTH - N_COLS * ITEM_SIDE_LENGTH) / (N_COLS + 1);
-    int OffsetH = (SCREEN_WIDTH - N_ROWS * ITEM_SIDE_LENGTH) / (N_ROWS + 1);
-    int x = OffsetW + (OffsetW + ITEM_SIDE_LENGTH) * ((*lvl_n - 1) % N_COLS) -
-            ITEM_SIDE_LENGTH / 2 - (LVL_POINTER_W - ITEM_SIDE_LENGTH) / 2;
-    int y = OffsetH + (OffsetH + ITEM_SIDE_LENGTH) * ((*lvl_n - 1) / N_ROWS) -
-            (LVL_POINTER_H - ITEM_SIDE_LENGTH) / 2;
+    int OffsetW = (SCREEN_WIDTH - LVL_MENU_NCOLS * LVL_NUMBER_SIZE) / (LVL_MENU_NCOLS + 1);
+    int OffsetH = (SCREEN_WIDTH - LVL_MENU_NROWS * LVL_NUMBER_SIZE) / (LVL_MENU_NROWS + 1);
+    int x = OffsetW + (OffsetW + LVL_NUMBER_SIZE) * ((*lvl_n - 1) % LVL_MENU_NCOLS) -
+            LVL_NUMBER_SIZE / 2 - (LVL_POINTER_W - LVL_NUMBER_SIZE) / 2;
+    int y = OffsetH + (OffsetH + LVL_NUMBER_SIZE) * ((*lvl_n - 1) / LVL_MENU_NROWS) -
+            (LVL_POINTER_H - LVL_NUMBER_SIZE) / 2;
 
     while (SDL_PollEvent(e) != 0) {
         if (e->type == SDL_QUIT) {
@@ -182,12 +159,12 @@ void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
                     *gState = GET_LVL;
                     break;
                 case SDLK_UP:
-                    if (*lvl_n > N_COLS)
-                        *lvl_n -= N_COLS;
+                    if (*lvl_n > LVL_MENU_NCOLS)
+                        *lvl_n -= LVL_MENU_NCOLS;
                     break;
                 case SDLK_DOWN:
-                    if (*lvl_n + N_COLS <= N_LEVELS)
-                        *lvl_n += N_COLS;
+                    if (*lvl_n + LVL_MENU_NCOLS <= N_LEVELS)
+                        *lvl_n += LVL_MENU_NCOLS;
                     break;
                 case SDLK_LEFT:
                     if (*lvl_n > 1)
@@ -212,31 +189,29 @@ void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
 void renderLvlItems(int OffsetW, int OffsetH)
 {
     char text[2] = "";
-    int rectW = ITEM_SIDE_LENGTH;
-    int rectH = ITEM_SIDE_LENGTH;
-    SDL_Rect textRect = {OffsetW, OffsetH, rectW, rectH};
-    for (int i = 0; i < N_ROWS; ++i) {
-        for (int j = 0; j < N_COLS; ++j) {
-            if (i * N_COLS + j + 1 > N_LEVELS)
+    SDL_Rect textRect = {OffsetW, OffsetH, LVL_NUMBER_SIZE, LVL_NUMBER_SIZE};
+    for (int i = 0; i < LVL_MENU_NROWS; ++i) {
+        for (int j = 0; j < LVL_MENU_NCOLS; ++j) {
+            if (i * LVL_MENU_NCOLS + j + 1 > N_LEVELS)
                 return;
-            sprintf(text, "%d", i * N_COLS + j + 1);
-            if ((i * N_COLS + j + 1) / 10 == 0)
-                textRect.x -= rectW / 2;
-            renderText(text, textRect, gFonts.lazy, 2 * rectW, gRenderer);
+            sprintf(text, "%d", i * LVL_MENU_NCOLS + j + 1);
+            if ((i * LVL_MENU_NCOLS + j + 1) / 10 == 0)
+                textRect.x -= LVL_NUMBER_SIZE / 2;
+            renderText(text, textRect, lazy_font, 0, gRenderer);
             SDL_RenderDrawRect(gRenderer, &textRect);
-            textRect.x += rectW + OffsetW;
-            if ((i * N_COLS + j + 1) / 10 == 0)
-                textRect.x += rectW / 2;
+            textRect.x += LVL_NUMBER_SIZE + OffsetW;
+            if ((i * LVL_MENU_NCOLS + j + 1) / 10 == 0)
+                textRect.x += LVL_NUMBER_SIZE / 2;
         }
         textRect.x = OffsetW;
-        textRect.y += rectH + OffsetH;
+        textRect.y += LVL_NUMBER_SIZE + OffsetH;
     }
 }
 
 int inBorders(int curPos_i, int curPos_j, int curVel_i, int curVel_j)
 {
-    return curPos_i + curVel_i > 0 && curPos_i + curVel_i < N_FIELDS_WIDTH &&
-           curPos_j + curVel_j > 0 && curPos_j + curVel_j < N_FIELDS_HEIGHT;
+    return curPos_i + curVel_i > 0 && curPos_i + curVel_i < NTILES_WIDTH &&
+           curPos_j + curVel_j > 0 && curPos_j + curVel_j < NTILES_HEIGHT;
 }
 
 int canMove(int subFieldType)
@@ -251,11 +226,11 @@ int isBox(int subFieldType)
 
 void renderLvlInfo(int lvl_n, int n_steps)
 {
-    char text[LETTERS_MAX] = "";
+    char text[LVLI_LETTERS_NMAX] = "";
     sprintf(text, "Lvl No. %d\nSteps: %d", lvl_n, n_steps);
-    SDL_Rect Rect = {SCREEN_WIDTH - LETTERS_MAX * LETTER_WIDTH / 2, 0,
-                     LETTERS_MAX * LETTER_WIDTH / 2, LETTER_HEIGHT * 3};
-    renderText(text, Rect, gFonts.lazy, LETTERS_MAX * LETTER_WIDTH / 2, gRenderer);
+    SDL_Rect Rect = {SCREEN_WIDTH - LVLI_LETTERS_NMAX * LVLI_LETTERW / LVLI_NLINES, 0,
+                     LVLI_LETTERS_NMAX * LVLI_LETTERW / LVLI_NLINES, LVLI_LETTERH * LVLI_NLINES};
+    renderText(text, Rect, lazy_font, 0, gRenderer);
 }
 
 void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *n_steps, int *lvl_n, int *gState)
@@ -272,11 +247,14 @@ void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *n_steps, i
             switch (e->key.keysym.sym) {
                 case SDLK_RETURN:
                 case SDLK_KP_ENTER:
+                case SDLK_r:
                     *gState = GET_LVL;
                     break;
                 case SDLK_q:
                     *gState = QUIT;
                     break;
+                case SDLK_m:
+                    *gState = CHOOSE_LVL;
                 case SDLK_UP:
                     vel_i = -1;
                     vel_j = 0;
@@ -341,75 +319,88 @@ void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *n_steps, i
     }
 }
 
+int renderField(struct lvl *cur_level)
+{
+    int progress = 0;
+    int x = cur_level->OffsetW;
+    int y = cur_level->OffsetH;
+    for (int i = 0; i < NTILES_HEIGHT; ++i) {
+        for (int j = 0; j < NTILES_WIDTH; ++j) {
+            renderTexture(&gFieldTextures, x, y, &FieldT[cur_level->field[i][j]], gRenderer);
+            x += TILE_SIZE;
+            if (cur_level->field[i][j] == D_BOX)
+                ++progress;
+        }
+        x = cur_level->OffsetW;
+        y += TILE_SIZE;
+    }
+    return progress;
+}
+
 int init()
 {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        printf("SDL init Error: %s\n", SDL_GetError());
-        return 0;
+        printf("SDL_INIT_ERR: %s\n", SDL_GetError());
+        return SDL_INIT_ERR;
     }
 
     if (TTF_Init() == -1) {
-        printf("TTF init Error: %s\n", TTF_GetError());
-        return 0;
+        printf("TTF_INIT_ERR: %s\n", TTF_GetError());
+        return TTF_INIT_ERR;
     }
 
-    if (!SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1")) {
-        printf("Warning: Linear texture filtering not enabled!");
-    }
-
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
     gWindow = SDL_CreateWindow("Boxes Game",
                                SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                                SCREEN_WIDTH, SCREEN_HEIGHT,
                                SDL_WINDOW_SHOWN);
     if (gWindow == NULL) {
-        printf("SDL window creating Error: %s\n", SDL_GetError());
-        return 0;
+        printf("SDL_WINDOW_ERR: %s\n", SDL_GetError());
+        return SDL_WINDOW_ERR;
     }
 
     gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
     if (gRenderer == NULL) {
-        printf("SDL renderer creating Error: %s\n", SDL_GetError());
-        return 0;
+        printf("SDL_RENDERER_ERR: %s\n", SDL_GetError());
+        return SDL_RENDERER_ERR;
     }
 
-    SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0);
-
+    SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0x0);
     int imgFlags = IMG_INIT_PNG;
     if (!(IMG_Init(imgFlags) & imgFlags)) {
-        printf("SDL_image init Error: %s\n", IMG_GetError());
-        return 0;
+        printf("IMG_INIT_ERR: %s\n", IMG_GetError());
+        return IMG_INIT_ERR;
     }
 
     if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
-        printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
-        return 0;
+        printf("MIXER_INIT_ERR: %s\n", Mix_GetError());
+        return MIXER_INIT_ERR;
     }
 
-    return 1;
+    return 0;
 }
 
 int loadMedia()
 {
     Mix_VolumeMusic((int) (MIX_MAX_VOLUME * 0.1));
 
-    if (!loadTextureFromFile(&gHeroTextures, "./images/hero.bmp", gRenderer)) {
-        printf("Texture loading Error.\n");
-        return 0;
-    }
+    int rc;
+    if ((rc = loadTextureFromFile(&gHeroTextures, "./images/hero.bmp", gRenderer)) != 0)
+        return rc;
+
     setTextures(HeroT, N_HERO_TYPES, HERO_SIZE, HERO_SIZE);
-    gHeroTextures.Height = STEP;
-    gHeroTextures.Width = STEP;
+    gHeroTextures.Height = TILE_SIZE;
+    gHeroTextures.Width = TILE_SIZE;
 
-    if (!loadTextureFromFile(&gFieldTextures, "./images/fields_new.png", gRenderer)) {
-        printf("Texture loading Error.\n");
-        return 0;
-    }
-    setTextures(FieldT, N_FIELD_TYPES, FITEM_SIZE, FITEM_SIZE);
-    gFieldTextures.Height = STEP;
-    gFieldTextures.Width = STEP;
+    if ((rc = loadTextureFromFile(&gFieldTextures, "./images/fields_new.png", gRenderer)) != 0)
+        return rc;
 
-    gFonts.lazy = TTF_OpenFont("./fonts/lazy.ttf", 24);
-    return 1;
+    setTextures(FieldT, N_FIELD_TYPES, TILE_SIZE, TILE_SIZE);
+    gFieldTextures.Height = TILE_SIZE;
+    gFieldTextures.Width = TILE_SIZE;
+
+    lazy_font = TTF_OpenFont("./fonts/lazy.ttf", 24);
+    return 0;
 }
 
 int setTextures(SDL_Rect Textures[], int n, int w, int h)
@@ -420,22 +411,4 @@ int setTextures(SDL_Rect Textures[], int n, int w, int h)
         Textures[i].w = w;
         Textures[i].h = h;
     }
-}
-
-int renderField(struct lvl *cur_level)
-{
-    int progress = 0;
-    int x = cur_level->OffsetW;
-    int y = cur_level->OffsetH;
-    for (int i = 0; i < N_FIELDS_HEIGHT; ++i) {
-        for (int j = 0; j < N_FIELDS_WIDTH; ++j) {
-            renderTexture(&gFieldTextures, x, y, &FieldT[cur_level->field[i][j]], gRenderer);
-            x += STEP;
-            if (cur_level->field[i][j] == D_BOX)
-                ++progress;
-        }
-        x = cur_level->OffsetW;
-        y += STEP;
-    }
-    return progress;
 }
