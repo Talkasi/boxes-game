@@ -17,7 +17,7 @@ int renderField(struct lvl *cur_level);
 void renderStart(SDL_Event *e, int *gState);
 void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState);
 void renderLvlItems(int OffsetW, int OffsetH);
-void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *n_steps, int *lvl_n, int *gState);
+void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *volume, int *n_steps, int *lvl_n, int *gState);
 
 int inBorders(int curPos_i, int curPos_j, int curVel_i, int curVel_j);
 int canMove(int subFieldType);
@@ -27,22 +27,45 @@ enum hero_state { RIGHT,
                   SUCCESS,
                   N_HERO_TYPES };
 
+enum icons {
+    I_MENU,
+    I_RESTART,
+    I_SOUND,
+    I_VOLUME,
+    N_ICON_TYPES
+};
+
 enum game_state {
-    QUIT,
-    START,
-    CHOOSE_LVL,
-    GET_LVL,
-    LVL,
-    COMPLETED
+    G_QUIT,
+    G_START,
+    G_LVL_MENU,
+    G_GET_LVL,
+    G_LVL,
+    G_COMPLETED
+};
+
+enum music_state {
+    M_LEVEL,
+    M_SUCCESS_S,
+    M_SUCCESS_E
 };
 
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
 struct LTexture gHeroTextures;
 struct LTexture gFieldTextures;
+struct LTexture gIconTextures;
 SDL_Rect HeroT[N_HERO_TYPES];
 SDL_Rect FieldT[N_FIELD_TYPES];
+SDL_Rect IconT[N_ICON_TYPES];
 TTF_Font *lazy_font;
+
+struct music {
+    int MusicState;
+    Mix_Music *level;
+    Mix_Music *success_start;
+    Mix_Music *success_end;
+} gMusic;
 
 int main(int argc, char *args[])
 {
@@ -54,13 +77,15 @@ int main(int argc, char *args[])
     lvl_info.cur_n = 1;
     lvl_info.info[0] = 1;
 
+    int volume = 50;
     int n_steps;
     struct lvl cur_level;
     int HeroState;
+    Mix_PlayMusic(gMusic.level, -1);
 
     SDL_Event e;
-    int GameState = START;
-    while (GameState != QUIT) {
+    int GameState = G_START;
+    while (GameState != G_QUIT) {
         uint32_t start, delay_time;
         start = SDL_GetTicks();
 
@@ -68,25 +93,25 @@ int main(int argc, char *args[])
         SDL_RenderClear(gRenderer);
 
         switch (GameState) {
-            case (LVL):
-                renderLvl(&e, &cur_level, &HeroState, &n_steps, &lvl_info.cur_n, &GameState);
+            case (G_LVL):
+                renderLvl(&e, &cur_level, &HeroState, &volume, &n_steps, &lvl_info.cur_n, &GameState);
                 if (lvl_info.cur_n > N_LEVELS)
-                    GameState = COMPLETED;
+                    GameState = G_COMPLETED;
                 break;
-            case (GET_LVL):
+            case (G_GET_LVL):
                 getLvl(lvl_info.cur_n, &cur_level);
                 HeroState = RIGHT;
-                GameState = LVL;
+                GameState = G_LVL;
                 n_steps = 0;
                 break;
-            case (START):
-                renderStart(&e, &GameState);
-                break;
-            case (CHOOSE_LVL):
+            case (G_LVL_MENU):
                 renderLvlMenu(&e, &lvl_info.cur_n, &GameState);
                 break;
-            case (COMPLETED):
-                GameState = QUIT;
+            case (G_START):
+                renderStart(&e, &GameState);
+                break;
+            case (G_COMPLETED):
+                GameState = G_QUIT;
             default:
                 break;
         }
@@ -104,28 +129,28 @@ void renderStart(SDL_Event *e, int *gState)
 {
     while (SDL_PollEvent(e) != 0) {
         if (e->type == SDL_QUIT) {
-            *gState = QUIT;
+            *gState = G_QUIT;
             break;
         }
 
         if (e->type == SDL_KEYDOWN)
             switch (e->key.keysym.sym) {
                 case SDLK_q:
-                    *gState = QUIT;
+                    *gState = G_QUIT;
                     break;
                 case SDLK_RETURN:
                 case SDLK_KP_ENTER:
-                    *gState = CHOOSE_LVL;
+                    *gState = G_LVL_MENU;
                     break;
                 default:
                     break;
             }
     }
 
-    char text[STRT_LINE_LENGTH * STRT_NLINES] = " This is my version \n"
-                                                "   of boxxle game   \n"
-                                                "                    \n"
-                                                "Press Enter to enjoy.";
+    char text[STRT_LINE_LENGTH * STRT_NLINES] = "  This is my version  \n"
+                                                "    of boxxle game    \n"
+                                                "                      \n"
+                                                "Press Enter to enjoy...";
 
     SDL_Rect Rect = {(SCREEN_WIDTH - STRT_LINE_LENGTH * START_LETTERW) / 2,
                      (SCREEN_HEIGHT - STRT_NLINES * START_LETTERH) / 2,
@@ -145,18 +170,18 @@ void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
 
     while (SDL_PollEvent(e) != 0) {
         if (e->type == SDL_QUIT) {
-            *gState = QUIT;
+            *gState = G_QUIT;
             break;
         }
 
         if (e->type == SDL_KEYDOWN)
             switch (e->key.keysym.sym) {
                 case SDLK_q:
-                    *gState = QUIT;
+                    *gState = G_QUIT;
                     break;
                 case SDLK_RETURN:
                 case SDLK_KP_ENTER:
-                    *gState = GET_LVL;
+                    *gState = G_GET_LVL;
                     break;
                 case SDLK_UP:
                     if (*lvl_n > LVL_MENU_NCOLS)
@@ -224,37 +249,91 @@ int isBox(int subFieldType)
     return subFieldType == N_BOX || subFieldType == D_BOX;
 }
 
-void renderLvlInfo(int lvl_n, int n_steps)
+#define VOLUME_LINE_STRT (TILE_SIZE * 3 + ICON_OFFSET)
+#define VOLUME_LINE_END (TILE_SIZE * 5)
+void renderLvlInfo(int lvl_n, int volume, int n_steps)
 {
     char text[LVLI_LETTERS_NMAX] = "";
     sprintf(text, "Lvl No. %d\nSteps: %d", lvl_n, n_steps);
     SDL_Rect Rect = {SCREEN_WIDTH - LVLI_LETTERS_NMAX * LVLI_LETTERW / LVLI_NLINES, 0,
                      LVLI_LETTERS_NMAX * LVLI_LETTERW / LVLI_NLINES, LVLI_LETTERH * LVLI_NLINES};
     renderText(text, Rect, lazy_font, 0, gRenderer);
+
+    renderTexture(&gIconTextures, 0, 0, &IconT[I_MENU], gRenderer);
+    renderTexture(&gIconTextures, TILE_SIZE, 0, &IconT[I_RESTART], gRenderer);
+    renderTexture(&gIconTextures, TILE_SIZE * 2, 0, &IconT[I_SOUND], gRenderer);
+
+    SDL_SetRenderDrawColor(gRenderer, 0x0, 0x0, 0x0, 0x0);
+    SDL_RenderDrawLine(gRenderer, VOLUME_LINE_STRT, TILE_SIZE / 2, VOLUME_LINE_END, TILE_SIZE / 2);
+    renderTexture(&gIconTextures,
+                  VOLUME_LINE_STRT + (int) (volume / 100.0 * (VOLUME_LINE_END - VOLUME_LINE_STRT)) - TILE_SIZE / 2, 0,
+                  &IconT[I_VOLUME], gRenderer);
 }
 
-void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *n_steps, int *lvl_n, int *gState)
+#define SOUND_CALIBRATOR 0.1
+void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *volume, int *n_steps, int *lvl_n, int *gState)
 {
     int vel_i = 0, vel_j = 0;
 
     while (SDL_PollEvent(e) != 0) {
         if (e->type == SDL_QUIT) {
-            *gState = QUIT;
+            *gState = G_QUIT;
             break;
         }
+
+        static int dot_pressed = 0;
+        if (e->type == SDL_MOUSEBUTTONDOWN) {
+            if (e->button.button == SDL_BUTTON_LEFT) {
+                int x = 0, y = 0;
+                SDL_GetMouseState(&x, &y);
+                if (y > 0 + ICON_OFFSET && y < TILE_SIZE - ICON_OFFSET) {
+                    if (x > 0 + ICON_OFFSET && x < TILE_SIZE - ICON_OFFSET)
+                        *gState = G_LVL_MENU;
+                    else if (x > TILE_SIZE + ICON_OFFSET && x < TILE_SIZE * 2 - ICON_OFFSET)
+                        *gState = G_GET_LVL;
+                    else if (x > TILE_SIZE * 2 + ICON_OFFSET && x < TILE_SIZE * 3 - ICON_OFFSET)
+                        *gState = G_START;
+                }
+                if (y > DOT_OFFSET && y < TILE_SIZE - DOT_OFFSET &&
+                    x > VOLUME_LINE_STRT && x < VOLUME_LINE_END) {
+                    dot_pressed = 1;
+                    *volume = (x - VOLUME_LINE_STRT) * 100 / (VOLUME_LINE_END - VOLUME_LINE_STRT);
+                    Mix_VolumeMusic((int) (*volume / 100.0 * MIX_MAX_VOLUME * SOUND_CALIBRATOR));
+                }
+            }
+        }
+
+        if (dot_pressed) {
+            int x = 0, y = 0;
+            SDL_GetMouseState(&x, &y);
+            if (y > DOT_OFFSET && y < TILE_SIZE - DOT_OFFSET &&
+                x > VOLUME_LINE_STRT && x < VOLUME_LINE_END) {
+                *volume = (x - VOLUME_LINE_STRT) * 100 / (VOLUME_LINE_END - VOLUME_LINE_STRT);
+                Mix_VolumeMusic((int) (*volume / 100.0 * MIX_MAX_VOLUME * SOUND_CALIBRATOR));
+            }
+        }
+
+        if (e->type == SDL_MOUSEBUTTONUP)
+            if (e->button.button == SDL_BUTTON_LEFT) {
+                int x = 0, y = 0;
+                SDL_GetMouseState(&x, &y);
+                if (y > DOT_OFFSET && y < TILE_SIZE - DOT_OFFSET &&
+                    x > VOLUME_LINE_STRT && x < VOLUME_LINE_END)
+                    dot_pressed = 0;
+            }
 
         if (e->type == SDL_KEYDOWN)
             switch (e->key.keysym.sym) {
                 case SDLK_RETURN:
                 case SDLK_KP_ENTER:
                 case SDLK_r:
-                    *gState = GET_LVL;
+                    *gState = G_GET_LVL;
                     break;
                 case SDLK_q:
-                    *gState = QUIT;
+                    *gState = G_QUIT;
                     break;
                 case SDLK_m:
-                    *gState = CHOOSE_LVL;
+                    *gState = G_LVL_MENU;
                 case SDLK_UP:
                     vel_i = -1;
                     vel_j = 0;
@@ -312,9 +391,9 @@ void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *n_steps, i
                   cur_level->hero.i * STEP + cur_level->OffsetH,
                   &HeroT[*hState], gRenderer);
 
-    renderLvlInfo(*lvl_n, *n_steps);
+    renderLvlInfo(*lvl_n, *volume, *n_steps);
     if (progress == cur_level->n_boxes) {
-        *gState = GET_LVL;
+        *gState = G_GET_LVL;
         ++*lvl_n;
     }
 }
@@ -383,6 +462,23 @@ int init()
 int loadMedia()
 {
     Mix_VolumeMusic((int) (MIX_MAX_VOLUME * 0.1));
+    gMusic.level = Mix_LoadMUS("./music/level.mp3");
+    if (gMusic.level == NULL) {
+        printf("MIXER_LOAD_ERR: %s\n", Mix_GetError());
+        return MIXER_LOAD_ERR;
+    }
+
+    gMusic.success_start = Mix_LoadMUS("./music/jingle_01.mp3");
+    if (gMusic.success_start == NULL) {
+        printf("MIXER_LOAD_ERR: %s\n", Mix_GetError());
+        return MIXER_LOAD_ERR;
+    }
+
+    gMusic.success_end = Mix_LoadMUS("./music/jingle_02.mp3");
+    if (gMusic.success_end == NULL) {
+        printf("MIXER_LOAD_ERR: %s\n", Mix_GetError());
+        return MIXER_LOAD_ERR;
+    }
 
     int rc;
     if ((rc = loadTextureFromFile(&gHeroTextures, "./images/hero.bmp", gRenderer)) != 0)
@@ -398,6 +494,13 @@ int loadMedia()
     setTextures(FieldT, N_FIELD_TYPES, TILE_SIZE, TILE_SIZE);
     gFieldTextures.Height = TILE_SIZE;
     gFieldTextures.Width = TILE_SIZE;
+
+    if ((rc = loadTextureFromFile(&gIconTextures, "./images/icons_new.png", gRenderer)) != 0)
+        return rc;
+
+    setTextures(IconT, N_ICON_TYPES, TILE_SIZE, TILE_SIZE);
+    gIconTextures.Height = TILE_SIZE;
+    gIconTextures.Width = TILE_SIZE;
 
     lazy_font = TTF_OpenFont("./fonts/lazy.ttf", 24);
     return 0;
