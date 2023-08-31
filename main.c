@@ -52,6 +52,7 @@ enum music_state {
 
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
+struct LTexture gStartTexture;
 struct LTexture gHeroTextures;
 struct LTexture gFieldTextures;
 struct LTexture gIconTextures;
@@ -141,22 +142,14 @@ void renderStart(SDL_Event *e, int *gState)
                 case SDLK_RETURN:
                 case SDLK_KP_ENTER:
                     *gState = G_LVL_MENU;
+                    freeTexture(&gStartTexture);
                     break;
                 default:
                     break;
             }
     }
 
-    char text[STRT_LINE_LENGTH * STRT_NLINES] = "  This is my version  \n"
-                                                "    of boxxle game    \n"
-                                                "                      \n"
-                                                "Press Enter to enjoy...";
-
-    SDL_Rect Rect = {(SCREEN_WIDTH - STRT_LINE_LENGTH * START_LETTERW) / 2,
-                     (SCREEN_HEIGHT - STRT_NLINES * START_LETTERH) / 2,
-                     STRT_LINE_LENGTH * START_LETTERW,
-                     STRT_NLINES * START_LETTERH};
-    renderText(text, Rect, lazy_font, 0, gRenderer);
+    renderTexture(&gStartTexture, (SCREEN_WIDTH - START_SIZE) / 2, (SCREEN_HEIGHT - START_SIZE) / 2, NULL, gRenderer);
 }
 
 void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
@@ -492,6 +485,12 @@ int loadMedia()
     }
 
     int rc;
+    if ((rc = loadTextureFromFile(&gStartTexture, "./images/start01.png", gRenderer)) != 0)
+        return rc;
+
+    gStartTexture.Height = START_SIZE;
+    gStartTexture.Width = START_SIZE;
+
     if ((rc = loadTextureFromFile(&gHeroTextures, "./images/hero.bmp", gRenderer)) != 0)
         return rc;
 
