@@ -270,7 +270,16 @@ void renderLvlInfo(int lvl_n, int volume, int n_steps)
                   &IconT[I_VOLUME], gRenderer);
 }
 
-#define SOUND_CALIBRATOR 0.1
+void changeSoundVolume(int *volume, int x)
+{
+    *volume = (x - VOLUME_LINE_STRT) * 100 / (VOLUME_LINE_END - VOLUME_LINE_STRT);
+    if (*volume < 0)
+        *volume = 0;
+    else if (*volume > 100)
+        *volume = 100;
+    Mix_VolumeMusic((int) (*volume / 100.0 * MIX_MAX_VOLUME));
+}
+
 void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *volume, int *n_steps, int *lvl_n, int *gState)
 {
     int vel_i = 0, vel_j = 0;
@@ -282,23 +291,30 @@ void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *volume, in
         }
 
         static int dot_pressed = 0;
+        static int comf_volume = 0;
         if (e->type == SDL_MOUSEBUTTONDOWN) {
             if (e->button.button == SDL_BUTTON_LEFT) {
                 int x = 0, y = 0;
                 SDL_GetMouseState(&x, &y);
                 if (y > 0 + ICON_OFFSET && y < TILE_SIZE - ICON_OFFSET) {
-                    if (x > 0 + ICON_OFFSET && x < TILE_SIZE - ICON_OFFSET)
+                    if (x > TILE_SIZE * I_MENU + ICON_OFFSET && x < TILE_SIZE * (I_MENU + 1) - ICON_OFFSET)
                         *gState = G_LVL_MENU;
-                    else if (x > TILE_SIZE + ICON_OFFSET && x < TILE_SIZE * 2 - ICON_OFFSET)
+                    else if (x > TILE_SIZE * I_RESTART + ICON_OFFSET && x < TILE_SIZE * (I_RESTART + 1) - ICON_OFFSET)
                         *gState = G_GET_LVL;
-                    else if (x > TILE_SIZE * 2 + ICON_OFFSET && x < TILE_SIZE * 3 - ICON_OFFSET)
-                        *gState = G_START;
+                    else if (x > TILE_SIZE * I_SOUND + ICON_OFFSET && x < TILE_SIZE * (I_SOUND + 1) - ICON_OFFSET) {
+                        if (*volume != 0) {
+                            comf_volume = *volume;
+                            *volume = 0;
+                        } else
+                            *volume = comf_volume;
+                        Mix_VolumeMusic((int) (*volume / 100.0 * MIX_MAX_VOLUME));
+                    }
                 }
+
                 if (y > DOT_OFFSET && y < TILE_SIZE - DOT_OFFSET &&
-                    x > VOLUME_LINE_STRT && x < VOLUME_LINE_END) {
+                    x >= VOLUME_LINE_STRT && x <= VOLUME_LINE_END) {
                     dot_pressed = 1;
-                    *volume = (x - VOLUME_LINE_STRT) * 100 / (VOLUME_LINE_END - VOLUME_LINE_STRT);
-                    Mix_VolumeMusic((int) (*volume / 100.0 * MIX_MAX_VOLUME * SOUND_CALIBRATOR));
+                    changeSoundVolume(volume, x);
                 }
             }
         }
@@ -306,19 +322,14 @@ void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *volume, in
         if (dot_pressed) {
             int x = 0, y = 0;
             SDL_GetMouseState(&x, &y);
-            if (y > DOT_OFFSET && y < TILE_SIZE - DOT_OFFSET &&
-                x > VOLUME_LINE_STRT && x < VOLUME_LINE_END) {
-                *volume = (x - VOLUME_LINE_STRT) * 100 / (VOLUME_LINE_END - VOLUME_LINE_STRT);
-                Mix_VolumeMusic((int) (*volume / 100.0 * MIX_MAX_VOLUME * SOUND_CALIBRATOR));
-            }
+            changeSoundVolume(volume, x);
         }
 
         if (e->type == SDL_MOUSEBUTTONUP)
             if (e->button.button == SDL_BUTTON_LEFT) {
                 int x = 0, y = 0;
                 SDL_GetMouseState(&x, &y);
-                if (y > DOT_OFFSET && y < TILE_SIZE - DOT_OFFSET &&
-                    x > VOLUME_LINE_STRT && x < VOLUME_LINE_END)
+                if (dot_pressed)
                     dot_pressed = 0;
             }
 

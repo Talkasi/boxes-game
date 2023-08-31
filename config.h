@@ -33,7 +33,8 @@
 
 #define ICON_SIZE 36
 #define ICON_OFFSET ((TILE_SIZE - ICON_SIZE) / 2)
-#define DOT_OFFSET ((TILE_SIZE - ICON_SIZE / 2) / 2)
+#define DOT_SIZE (ICON_SIZE / 2)
+#define DOT_OFFSET ((TILE_SIZE - DOT_SIZE) / 2)
 
 /* Return codes */
 #define SDL_INIT_ERR (-1)
