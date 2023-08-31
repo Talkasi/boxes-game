@@ -23,7 +23,7 @@ void getLvl(int n, struct lvl *lvl_dst)
             lvl_dst->hero.j = 1;
 
             lvl_dst->OffsetW = (SCREEN_WIDTH - 9 * TILE_SIZE) / 2;
-            lvl_dst->OffsetH = (SCREEN_HEIGHT - 9 * TILE_SIZE) / 2;
+            lvl_dst->OffsetH = (SCREEN_HEIGHT - 9 * TILE_SIZE + ICON_SIZE) / 2;
             lvl_dst->n_boxes = 3;
         } break;
         case 2: {
@@ -44,7 +44,7 @@ void getLvl(int n, struct lvl *lvl_dst)
             lvl_dst->hero.j = 6;
 
             lvl_dst->OffsetW = (SCREEN_WIDTH - 10 * TILE_SIZE) / 2;
-            lvl_dst->OffsetH = (SCREEN_HEIGHT - 9 * TILE_SIZE) / 2;
+            lvl_dst->OffsetH = (SCREEN_HEIGHT - 9 * TILE_SIZE + ICON_SIZE) / 2;
             lvl_dst->n_boxes = 4;
         } break;
         case 3: {
@@ -64,7 +64,7 @@ void getLvl(int n, struct lvl *lvl_dst)
             lvl_dst->hero.j = 1;
 
             lvl_dst->OffsetW = (SCREEN_WIDTH - 6 * TILE_SIZE) / 2;
-            lvl_dst->OffsetH = (SCREEN_HEIGHT - 8 * TILE_SIZE) / 2;
+            lvl_dst->OffsetH = (SCREEN_HEIGHT - 8 * TILE_SIZE + ICON_SIZE) / 2;
             lvl_dst->n_boxes = 5;
         } break;
         case 4: {
@@ -84,7 +84,7 @@ void getLvl(int n, struct lvl *lvl_dst)
             lvl_dst->hero.j = 2;
 
             lvl_dst->OffsetW = (SCREEN_WIDTH - 8 * STEP) / 2;
-            lvl_dst->OffsetH = (SCREEN_HEIGHT - 8 * STEP) / 2;
+            lvl_dst->OffsetH = (SCREEN_HEIGHT - 8 * STEP + ICON_SIZE) / 2;
             lvl_dst->n_boxes = 3;
         } break;
         case 5: {
@@ -103,7 +103,7 @@ void getLvl(int n, struct lvl *lvl_dst)
             lvl_dst->hero.j = 2;
 
             lvl_dst->OffsetW = (SCREEN_WIDTH - 10 * TILE_SIZE) / 2;
-            lvl_dst->OffsetH = (SCREEN_HEIGHT - 7 * TILE_SIZE) / 2;
+            lvl_dst->OffsetH = (SCREEN_HEIGHT - 7 * TILE_SIZE + ICON_SIZE) / 2;
             lvl_dst->n_boxes = 4;
         } break;
         case 6: {
@@ -122,7 +122,7 @@ void getLvl(int n, struct lvl *lvl_dst)
             lvl_dst->hero.j = 2;
 
             lvl_dst->OffsetW = (SCREEN_WIDTH - 8 * TILE_SIZE) / 2;
-            lvl_dst->OffsetH = (SCREEN_HEIGHT - 7 * TILE_SIZE) / 2;
+            lvl_dst->OffsetH = (SCREEN_HEIGHT - 7 * TILE_SIZE + ICON_SIZE) / 2;
             lvl_dst->n_boxes = 5;
         } break;
         default:
