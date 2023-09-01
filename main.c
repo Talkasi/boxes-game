@@ -16,9 +16,10 @@ int setTextures(SDL_Rect Textures[], int n, int w, int h);
 int renderField(struct lvl *cur_level);
 void renderStart(SDL_Event *e, int *gState);
 void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState);
-void renderLvlItems(int OffsetW, int OffsetH);
+void renderLvlItems(int lvl_n);
 void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *volume, int *n_steps, int *lvl_n, int *gState);
 
+int onLevelNumber(int x, int y);
 int inBorders(int curPos_i, int curPos_j, int curVel_i, int curVel_j);
 int canMove(int subFieldType);
 
@@ -56,9 +57,11 @@ struct LTexture gStartTexture;
 struct LTexture gHeroTextures;
 struct LTexture gFieldTextures;
 struct LTexture gIconTextures;
+struct LTexture gLvlNTextures;
 SDL_Rect HeroT[N_HERO_TYPES];
 SDL_Rect FieldT[N_FIELD_TYPES];
 SDL_Rect IconT[N_ICON_TYPES];
+SDL_Rect LvlNT[N_LEVELS];
 TTF_Font *lazy_font;
 
 struct music {
@@ -74,10 +77,7 @@ int main(int argc, char *args[])
     if ((rc = init()) != 0 || (rc = loadMedia()) != 0)
         return rc;
 
-    struct lvl_info lvl_info;
-    lvl_info.cur_n = 1;
-    lvl_info.info[0] = 1;
-
+    int lvl_n = 1;
     int volume = 50;
     int n_steps;
     struct lvl cur_level;
@@ -95,18 +95,18 @@ int main(int argc, char *args[])
 
         switch (GameState) {
             case (G_LVL):
-                renderLvl(&e, &cur_level, &HeroState, &volume, &n_steps, &lvl_info.cur_n, &GameState);
-                if (lvl_info.cur_n > N_LEVELS)
+                renderLvl(&e, &cur_level, &HeroState, &volume, &n_steps, &lvl_n, &GameState);
+                if (lvl_n > N_LEVELS)
                     GameState = G_COMPLETED;
                 break;
             case (G_GET_LVL):
-                getLvl(lvl_info.cur_n, &cur_level);
+                getLvl(lvl_n, &cur_level);
                 HeroState = RIGHT;
                 GameState = G_LVL;
                 n_steps = 0;
                 break;
             case (G_LVL_MENU):
-                renderLvlMenu(&e, &lvl_info.cur_n, &GameState);
+                renderLvlMenu(&e, &lvl_n, &GameState);
                 break;
             case (G_START):
                 renderStart(&e, &GameState);
@@ -154,17 +154,26 @@ void renderStart(SDL_Event *e, int *gState)
 
 void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
 {
-    int OffsetW = (SCREEN_WIDTH - LVL_MENU_NCOLS * LVL_NUMBER_SIZE) / (LVL_MENU_NCOLS + 1);
-    int OffsetH = (SCREEN_WIDTH - LVL_MENU_NROWS * LVL_NUMBER_SIZE) / (LVL_MENU_NROWS + 1);
-    int x = OffsetW + (OffsetW + LVL_NUMBER_SIZE) * ((*lvl_n - 1) % LVL_MENU_NCOLS) -
-            LVL_NUMBER_SIZE / 2 - (LVL_POINTER_W - LVL_NUMBER_SIZE) / 2;
-    int y = OffsetH + (OffsetH + LVL_NUMBER_SIZE) * ((*lvl_n - 1) / LVL_MENU_NROWS) -
-            (LVL_POINTER_H - LVL_NUMBER_SIZE) / 2;
+    char text[] = "Menu";
+    int text_len = (int) strlen(text);
+    SDL_Rect textRect = {(SCREEN_WIDTH - text_len * LVL_NUMBER_SIZE) / 2, MENU_POSY, LVL_NUMBER_SIZE * text_len, LVL_NUMBER_SIZE};
+    renderText(text, textRect, lazy_font, 0, gRenderer);
 
     while (SDL_PollEvent(e) != 0) {
         if (e->type == SDL_QUIT) {
             *gState = G_QUIT;
             break;
+        }
+
+        if (e->type == SDL_MOUSEBUTTONDOWN) {
+            if (e->button.button == SDL_BUTTON_LEFT) {
+                int x, y, rc;
+                SDL_GetMouseState(&x, &y);
+                if ((rc = onLevelNumber(x, y)) != 0) {
+                    *lvl_n = rc;
+                    *gState = G_GET_LVL;
+                }
+            }
         }
 
         if (e->type == SDL_KEYDOWN)
@@ -197,32 +206,38 @@ void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
             }
     }
 
-    SDL_SetRenderDrawColor(gRenderer, 0x0, 0x0, 0x0, 0x0);
-    SDL_Rect dst = {x, y, LVL_POINTER_W, LVL_POINTER_H};
-    SDL_RenderDrawRect(gRenderer, &dst);
-
-    renderLvlItems(OffsetW, OffsetH);
+    renderLvlItems(*lvl_n);
 }
 
-void renderLvlItems(int OffsetW, int OffsetH)
+int onLevelNumber(int x, int y)
 {
-    char text[2] = "";
-    SDL_Rect textRect = {OffsetW, OffsetH, LVL_NUMBER_SIZE, LVL_NUMBER_SIZE};
+    if ((y - MENU_OFFSET) % (LVL_MENU_OFFSETH + LVL_NUMBER_SIZE) >= LVL_MENU_OFFSETH && x % (LVL_MENU_OFFSETW + LVL_NUMBER_SIZE) >= LVL_MENU_OFFSETW)
+        return (y - MENU_OFFSET) / (LVL_MENU_OFFSETH + LVL_NUMBER_SIZE) * LVL_MENU_NCOLS + x / (LVL_MENU_OFFSETW + LVL_NUMBER_SIZE) + 1;
+    else
+        return 0;
+}
+
+void renderLvlItems(int lvl_n)
+{
+    int x = LVL_MENU_OFFSETW;
+    int y = LVL_MENU_OFFSETH + MENU_OFFSET;
+
     for (int i = 0; i < LVL_MENU_NROWS; ++i) {
-        for (int j = 0; j < LVL_MENU_NCOLS; ++j) {
-            if (i * LVL_MENU_NCOLS + j + 1 > N_LEVELS)
-                return;
-            sprintf(text, "%d", i * LVL_MENU_NCOLS + j + 1);
-            if ((i * LVL_MENU_NCOLS + j + 1) / 10 == 0)
-                textRect.x -= LVL_NUMBER_SIZE / 2;
-            renderText(text, textRect, lazy_font, 0, gRenderer);
-            SDL_RenderDrawRect(gRenderer, &textRect);
-            textRect.x += LVL_NUMBER_SIZE + OffsetW;
-            if ((i * LVL_MENU_NCOLS + j + 1) / 10 == 0)
-                textRect.x += LVL_NUMBER_SIZE / 2;
+        for (int j = 0; j < LVL_MENU_NCOLS && i * LVL_MENU_NCOLS + j + 1 <= N_LEVELS; ++j) {
+            renderTexture(&gLvlNTextures, x, y, &LvlNT[i * LVL_MENU_NCOLS + j], gRenderer);
+
+            if (i * LVL_MENU_NCOLS + j + 1 == lvl_n) {
+                SDL_SetRenderDrawColor(gRenderer, 0x0, 0x0, 0x0, 0x0);
+                SDL_Rect dst = {x - (LVL_POINTER_W - LVL_NUMBER_SIZE) / 2,
+                                y - (LVL_POINTER_H - LVL_NUMBER_SIZE) / 2,
+                                LVL_POINTER_W, LVL_POINTER_H};
+                SDL_RenderDrawRect(gRenderer, &dst);
+            }
+
+            x += LVL_NUMBER_SIZE + LVL_MENU_OFFSETW;
         }
-        textRect.x = OffsetW;
-        textRect.y += LVL_NUMBER_SIZE + OffsetH;
+        x = LVL_MENU_OFFSETW;
+        y += LVL_NUMBER_SIZE + LVL_MENU_OFFSETH;
     }
 }
 
@@ -242,12 +257,6 @@ int isBox(int subFieldType)
     return subFieldType == N_BOX || subFieldType == D_BOX;
 }
 
-#define VOLUME_LINE_STRT (TILE_SIZE * 3 + ICON_OFFSET)
-#define VOLUME_LINE_END (TILE_SIZE * 5)
-
-#define I_MENU_POSX 0
-#define I_RESTART_POSX TILE_SIZE
-#define I_SOUND_POSX (TILE_SIZE * 2)
 void renderLvlInfo(int lvl_n, int volume, int n_steps)
 {
     char text[LVLI_LETTERS_NMAX] = "";
@@ -267,7 +276,7 @@ void renderLvlInfo(int lvl_n, int volume, int n_steps)
                   &IconT[I_VOLUME], gRenderer);
 }
 
-#define VOLUME_CALIBRATION 0.1
+
 void changeSoundVolume(int *volume, int x)
 {
     *volume = (x - VOLUME_LINE_STRT) * 100 / (VOLUME_LINE_END - VOLUME_LINE_STRT);
@@ -514,6 +523,13 @@ int loadMedia()
     setTextures(IconT, N_ICON_TYPES, TILE_SIZE, TILE_SIZE);
     gIconTextures.Height = TILE_SIZE;
     gIconTextures.Width = TILE_SIZE;
+
+    if ((rc = loadTextureFromFile(&gLvlNTextures, "./images/lvl_numbers.png", gRenderer)) != 0)
+        return rc;
+
+    setTextures(LvlNT, N_LEVELS, LVL_NUMBER_SIZE, LVL_NUMBER_SIZE);
+    gLvlNTextures.Height = LVL_NUMBER_SIZE;
+    gLvlNTextures.Width = LVL_NUMBER_SIZE;
 
     lazy_font = TTF_OpenFont("./fonts/lazy.ttf", 24);
     return 0;
