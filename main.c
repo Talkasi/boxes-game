@@ -23,9 +23,9 @@ int onLevelNumber(int x, int y);
 int inBorders(int curPos_i, int curPos_j, int curVel_i, int curVel_j);
 int canMove(int subFieldType);
 
-enum hero_state { RIGHT,
-                  LEFT,
-                  SUCCESS,
+enum hero_state { H_RIGHT,
+                  H_LEFT,
+                  H_SUCCESS,
                   N_HERO_TYPES };
 
 enum icons {
@@ -46,6 +46,7 @@ enum game_state {
 };
 
 enum music_state {
+    M_MAIN,
     M_LEVEL,
     M_SUCCESS_S,
     M_SUCCESS_E
@@ -66,10 +67,18 @@ TTF_Font *lazy_font;
 
 struct music {
     int MusicState;
+    Mix_Music *main;
     Mix_Music *level;
     Mix_Music *success_start;
     Mix_Music *success_end;
 } gMusic;
+
+#define MUSIC_INFINITY (-1)
+void playMusic(int music_key, int n_times, Mix_Music *music)
+{
+    gMusic.MusicState = music_key;
+    Mix_PlayMusic(music, n_times);
+}
 
 int main(int argc, char *args[])
 {
@@ -82,7 +91,9 @@ int main(int argc, char *args[])
     int n_steps;
     struct lvl cur_level;
     int HeroState;
-    Mix_PlayMusic(gMusic.level, -1);
+
+    Mix_VolumeMusic((int) (MIX_MAX_VOLUME * volume * VOLUME_CALIBRATION / 100));
+    playMusic(M_MAIN, MUSIC_INFINITY, gMusic.main);
 
     SDL_Event e;
     int GameState = G_START;
@@ -101,11 +112,13 @@ int main(int argc, char *args[])
                 break;
             case (G_GET_LVL):
                 getLvl(lvl_n, &cur_level);
-                HeroState = RIGHT;
+                HeroState = H_RIGHT;
                 GameState = G_LVL;
                 n_steps = 0;
                 break;
             case (G_LVL_MENU):
+                if (gMusic.MusicState != M_MAIN)
+                    playMusic(M_MAIN, MUSIC_INFINITY, gMusic.main);
                 renderLvlMenu(&e, &lvl_n, &GameState);
                 break;
             case (G_START):
@@ -152,9 +165,15 @@ void renderStart(SDL_Event *e, int *gState)
     renderTexture(&gStartTexture, (SCREEN_WIDTH - START_SIZE) / 2, (SCREEN_HEIGHT - START_SIZE) / 2, NULL, gRenderer);
 }
 
+void handleGetLvl(int *gState)
+{
+    *gState = G_GET_LVL;
+    if (gMusic.MusicState != M_LEVEL)
+        playMusic(M_LEVEL, MUSIC_INFINITY, gMusic.level);
+}
 void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
 {
-    char text[] = "Menu";
+    char text[] = "Level Menu";
     int text_len = (int) strlen(text);
     SDL_Rect textRect = {(SCREEN_WIDTH - text_len * LVL_NUMBER_SIZE) / 2, MENU_POSY, LVL_NUMBER_SIZE * text_len, LVL_NUMBER_SIZE};
     renderText(text, textRect, lazy_font, 0, gRenderer);
@@ -171,7 +190,6 @@ void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
                 SDL_GetMouseState(&x, &y);
                 if ((rc = onLevelNumber(x, y)) != 0) {
                     *lvl_n = rc;
-                    *gState = G_GET_LVL;
                 }
             }
         }
@@ -183,7 +201,7 @@ void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
                     break;
                 case SDLK_RETURN:
                 case SDLK_KP_ENTER:
-                    *gState = G_GET_LVL;
+                    handleGetLvl(gState);
                     break;
                 case SDLK_UP:
                     if (*lvl_n > LVL_MENU_NCOLS)
@@ -299,7 +317,7 @@ void handleMouseButton(SDL_Event *e, int *volume, int *gState)
                 if (x > I_MENU_POSX + ICON_OFFSET && x < I_MENU_POSX + TILE_SIZE - ICON_OFFSET)
                     *gState = G_LVL_MENU;
                 else if (x > I_RESTART_POSX + ICON_OFFSET && x < I_RESTART_POSX + TILE_SIZE - ICON_OFFSET)
-                    *gState = G_GET_LVL;
+                    handleGetLvl(gState);
                 else if (x > I_SOUND_POSX + ICON_OFFSET && x < I_SOUND_POSX + TILE_SIZE - ICON_OFFSET) {
                     if (*volume != 0) {
                         comf_volume = *volume;
@@ -343,7 +361,7 @@ void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *volume, in
                 case SDLK_RETURN:
                 case SDLK_KP_ENTER:
                 case SDLK_r:
-                    *gState = G_GET_LVL;
+                    handleGetLvl(gState);
                     break;
                 case SDLK_q:
                     *gState = G_QUIT;
@@ -359,12 +377,12 @@ void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *volume, in
                     vel_j = 0;
                     break;
                 case SDLK_LEFT:
-                    *hState = LEFT;
+                    *hState = H_LEFT;
                     vel_i = 0;
                     vel_j = -1;
                     break;
                 case SDLK_RIGHT:
-                    *hState = RIGHT;
+                    *hState = H_RIGHT;
                     vel_i = 0;
                     vel_j = 1;
                     break;
@@ -375,7 +393,7 @@ void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *volume, in
             }
     }
 
-    if (!(vel_i == 0 && vel_j == 0)) {
+    if (gMusic.MusicState == M_LEVEL && !(vel_i == 0 && vel_j == 0)) {
         if (inBorders(cur_level->hero.i, cur_level->hero.j, vel_i, vel_j) &&
             canMove(cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j])) {
             cur_level->hero.i += vel_i;
@@ -401,17 +419,25 @@ void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *volume, in
     }
 
     int progress = renderField(cur_level);
+    if (progress == cur_level->n_boxes) {
+        if (Mix_PlayingMusic() && gMusic.MusicState == M_LEVEL) {
+            playMusic(M_SUCCESS_S, 0, gMusic.success_start);
+        } else if (!Mix_PlayingMusic() && gMusic.MusicState == M_SUCCESS_S) {
+            *hState = H_SUCCESS;
+            playMusic(M_SUCCESS_E, 0, gMusic.success_end);
+        } else if (!Mix_PlayingMusic() && gMusic.MusicState == M_SUCCESS_E) {
+            *hState = H_SUCCESS;
+            handleGetLvl(gState);
+            ++*lvl_n;
+        } else if (Mix_PlayingMusic() && gMusic.MusicState == M_SUCCESS_E)
+            *hState = H_SUCCESS;
+    }
 
     renderTexture(&gHeroTextures,
                   cur_level->hero.j * STEP + cur_level->OffsetW,
                   cur_level->hero.i * STEP + cur_level->OffsetH,
                   &HeroT[*hState], gRenderer);
-
     renderLvlInfo(*lvl_n, *volume, *n_steps);
-    if (progress == cur_level->n_boxes) {
-        *gState = G_GET_LVL;
-        ++*lvl_n;
-    }
 }
 
 int renderField(struct lvl *cur_level)
@@ -477,7 +503,12 @@ int init()
 
 int loadMedia()
 {
-    Mix_VolumeMusic((int) (MIX_MAX_VOLUME * 0.5 * VOLUME_CALIBRATION));
+    gMusic.main = Mix_LoadMUS("./music/main.mp3");
+    if (gMusic.main == NULL) {
+        printf("MIXER_LOAD_ERR: %s\n", Mix_GetError());
+        return MIXER_LOAD_ERR;
+    }
+
     gMusic.level = Mix_LoadMUS("./music/level.mp3");
     if (gMusic.level == NULL) {
         printf("MIXER_LOAD_ERR: %s\n", Mix_GetError());
