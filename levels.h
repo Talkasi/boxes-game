@@ -13,7 +13,6 @@ enum field {
 };
 
 typedef uint8_t lvl_field[NTILES_HEIGHT][NTILES_WIDTH];
-typedef uint8_t lvl_info_arr[N_LEVELS];
 
 struct point {
     int i;
@@ -26,11 +25,6 @@ struct lvl {
     int n_boxes;
     int OffsetW;
     int OffsetH;
-};
-
-struct lvl_info {
-    int cur_n;
-    lvl_info_arr info;
 };
 
 void getLvl(int n, struct lvl *lvl_dst);
