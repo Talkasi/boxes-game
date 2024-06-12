@@ -58,11 +58,9 @@ struct LTexture gStartTexture;
 struct LTexture gHeroTextures;
 struct LTexture gFieldTextures;
 struct LTexture gIconTextures;
-struct LTexture gLvlNTextures;
 SDL_Rect HeroT[N_HERO_TYPES];
 SDL_Rect FieldT[N_FIELD_TYPES];
 SDL_Rect IconT[N_ICON_TYPES];
-SDL_Rect LvlNT[N_LEVELS];
 TTF_Font *lazy_font;
 
 struct music {
@@ -171,6 +169,7 @@ void handleGetLvl(int *gState)
     if (gMusic.MusicState != M_LEVEL)
         playMusic(M_LEVEL, MUSIC_INFINITY, gMusic.level);
 }
+
 void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
 {
     char text[] = "Level Menu";
@@ -237,25 +236,26 @@ int onLevelNumber(int x, int y)
 
 void renderLvlItems(int lvl_n)
 {
-    int x = LVL_MENU_OFFSETW;
-    int y = LVL_MENU_OFFSETH + MENU_OFFSET;
+    char text[3] = {};
+    SDL_Rect textRect = {LVL_MENU_OFFSETW, LVL_MENU_OFFSETH + MENU_OFFSET, LVL_NUMBER_SIZE, LVL_NUMBER_SIZE};
 
     for (int i = 0; i < LVL_MENU_NROWS; ++i) {
         for (int j = 0; j < LVL_MENU_NCOLS && i * LVL_MENU_NCOLS + j + 1 <= N_LEVELS; ++j) {
-            renderTexture(&gLvlNTextures, x, y, &LvlNT[i * LVL_MENU_NCOLS + j], gRenderer);
+            sprintf(text, "%d", i * LVL_MENU_NCOLS + j + 1);
+            renderText(text, textRect, lazy_font, 0, gRenderer);
 
             if (i * LVL_MENU_NCOLS + j + 1 == lvl_n) {
                 SDL_SetRenderDrawColor(gRenderer, 0x0, 0x0, 0x0, 0x0);
-                SDL_Rect dst = {x - (LVL_POINTER_W - LVL_NUMBER_SIZE) / 2,
-                                y - (LVL_POINTER_H - LVL_NUMBER_SIZE) / 2,
+                SDL_Rect dst = {textRect.x - (LVL_POINTER_W - LVL_NUMBER_SIZE) / 2,
+                                textRect.y - (LVL_POINTER_H - LVL_NUMBER_SIZE) / 2,
                                 LVL_POINTER_W, LVL_POINTER_H};
                 SDL_RenderDrawRect(gRenderer, &dst);
             }
 
-            x += LVL_NUMBER_SIZE + LVL_MENU_OFFSETW;
+            textRect.x += LVL_NUMBER_SIZE + LVL_MENU_OFFSETW;
         }
-        x = LVL_MENU_OFFSETW;
-        y += LVL_NUMBER_SIZE + LVL_MENU_OFFSETH;
+        textRect.x = LVL_MENU_OFFSETW;
+        textRect.y += LVL_NUMBER_SIZE + LVL_MENU_OFFSETH;
     }
 }
 
@@ -528,39 +528,32 @@ int loadMedia()
     }
 
     int rc;
-    if ((rc = loadTextureFromFile(&gStartTexture, "./images/start01.png", gRenderer)) != 0)
+    if ((rc = loadTextureFromFile(&gStartTexture, "./images/start.png", gRenderer)) != 0)
         return rc;
 
     gStartTexture.Height = START_SIZE;
     gStartTexture.Width = START_SIZE;
 
-    if ((rc = loadTextureFromFile(&gHeroTextures, "./images/hero.bmp", gRenderer)) != 0)
+    if ((rc = loadTextureFromFile(&gHeroTextures, "./images/hero.png", gRenderer)) != 0)
         return rc;
 
     setTextures(HeroT, N_HERO_TYPES, HERO_SIZE, HERO_SIZE);
     gHeroTextures.Height = TILE_SIZE;
     gHeroTextures.Width = TILE_SIZE;
 
-    if ((rc = loadTextureFromFile(&gFieldTextures, "./images/fields_new.png", gRenderer)) != 0)
+    if ((rc = loadTextureFromFile(&gFieldTextures, "./images/fields.png", gRenderer)) != 0)
         return rc;
 
     setTextures(FieldT, N_FIELD_TYPES, TILE_SIZE, TILE_SIZE);
     gFieldTextures.Height = TILE_SIZE;
     gFieldTextures.Width = TILE_SIZE;
 
-    if ((rc = loadTextureFromFile(&gIconTextures, "./images/icons_new.png", gRenderer)) != 0)
+    if ((rc = loadTextureFromFile(&gIconTextures, "./images/icons.png", gRenderer)) != 0)
         return rc;
 
     setTextures(IconT, N_ICON_TYPES, TILE_SIZE, TILE_SIZE);
     gIconTextures.Height = TILE_SIZE;
     gIconTextures.Width = TILE_SIZE;
-
-    if ((rc = loadTextureFromFile(&gLvlNTextures, "./images/lvl_numbers.png", gRenderer)) != 0)
-        return rc;
-
-    setTextures(LvlNT, N_LEVELS, LVL_NUMBER_SIZE, LVL_NUMBER_SIZE);
-    gLvlNTextures.Height = LVL_NUMBER_SIZE;
-    gLvlNTextures.Width = LVL_NUMBER_SIZE;
 
     lazy_font = TTF_OpenFont("./fonts/lazy.ttf", 24);
     return 0;

@@ -1,7 +1,7 @@
 #ifndef GAME_CONFIG
 #define GAME_CONFIG
 
-#define SCREEN_WIDTH 510
+#define SCREEN_WIDTH 500
 #define SCREEN_HEIGHT 600
 
 #define NTILES_WIDTH 10
