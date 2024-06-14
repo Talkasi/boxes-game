@@ -23,20 +23,29 @@ int onLevelNumber(int x, int y);
 int inBorders(int curPos_i, int curPos_j, int curVel_i, int curVel_j);
 int canMove(int subFieldType);
 
-enum hero_state { H_RIGHT,
-                  H_LEFT,
-                  H_SUCCESS,
-                  N_HERO_TYPES };
+enum hero_state
+{
+    H_RIGHT,
+    H_LEFT,
+    H_UP,
+    H_DOWN,
+    H_SUCCESS,
+    N_HERO_TYPES
+};
 
-enum icons {
+enum icons
+{
     I_MENU,
     I_RESTART,
-    I_SOUND,
-    I_VOLUME,
+    I_SOUND_OFF,
+    I_SOUND_ON,
+    I_VOLUME_POINT,
+    I_VOLUME_LINE,
     N_ICON_TYPES
 };
 
-enum game_state {
+enum game_state
+{
     G_QUIT,
     G_START,
     G_LVL_MENU,
@@ -45,7 +54,8 @@ enum game_state {
     G_COMPLETED
 };
 
-enum music_state {
+enum music_state
+{
     M_MAIN,
     M_LEVEL,
     M_SUCCESS_S,
@@ -55,15 +65,18 @@ enum music_state {
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
 struct LTexture gStartTexture;
-struct LTexture gHeroTextures;
+struct LTexture gHeroTextures[N_HERO_TYPES];
 struct LTexture gFieldTextures;
 struct LTexture gIconTextures;
-SDL_Rect HeroT[N_HERO_TYPES];
+struct LTexture gVolumeLineTexture;
+
+SDL_Rect HeroT[N_HERO_TYPES][N_TILE_CHANGES];
 SDL_Rect FieldT[N_FIELD_TYPES];
 SDL_Rect IconT[N_ICON_TYPES];
 TTF_Font *lazy_font;
 
-struct music {
+struct music
+{
     int MusicState;
     Mix_Music *main;
     Mix_Music *level;
@@ -90,7 +103,7 @@ int main(int argc, char *args[])
     struct lvl cur_level;
     int HeroState;
 
-    Mix_VolumeMusic((int) (MIX_MAX_VOLUME * volume * VOLUME_CALIBRATION / 100));
+    Mix_VolumeMusic((int)(MIX_MAX_VOLUME * volume * VOLUME_CALIBRATION / 100));
     playMusic(M_MAIN, MUSIC_INFINITY, gMusic.main);
 
     SDL_Event e;
@@ -103,29 +116,29 @@ int main(int argc, char *args[])
         SDL_RenderClear(gRenderer);
 
         switch (GameState) {
-            case (G_LVL):
-                renderLvl(&e, &cur_level, &HeroState, &volume, &n_steps, &lvl_n, &GameState);
-                if (lvl_n > N_LEVELS)
-                    GameState = G_COMPLETED;
-                break;
-            case (G_GET_LVL):
-                getLvl(lvl_n, &cur_level);
-                HeroState = H_RIGHT;
-                GameState = G_LVL;
-                n_steps = 0;
-                break;
-            case (G_LVL_MENU):
-                if (gMusic.MusicState != M_MAIN)
-                    playMusic(M_MAIN, MUSIC_INFINITY, gMusic.main);
-                renderLvlMenu(&e, &lvl_n, &GameState);
-                break;
-            case (G_START):
-                renderStart(&e, &GameState);
-                break;
-            case (G_COMPLETED):
-                GameState = G_QUIT;
-            default:
-                break;
+        case (G_LVL):
+            renderLvl(&e, &cur_level, &HeroState, &volume, &n_steps, &lvl_n, &GameState);
+            if (lvl_n > N_LEVELS)
+                GameState = G_COMPLETED;
+            break;
+        case (G_GET_LVL):
+            getLvl(lvl_n, &cur_level);
+            HeroState = H_RIGHT;
+            GameState = G_LVL;
+            n_steps = 0;
+            break;
+        case (G_LVL_MENU):
+            if (gMusic.MusicState != M_MAIN)
+                playMusic(M_MAIN, MUSIC_INFINITY, gMusic.main);
+            renderLvlMenu(&e, &lvl_n, &GameState);
+            break;
+        case (G_START):
+            renderStart(&e, &GameState);
+            break;
+        case (G_COMPLETED):
+            GameState = G_QUIT;
+        default:
+            break;
         }
 
         SDL_RenderPresent(gRenderer);
@@ -147,16 +160,16 @@ void renderStart(SDL_Event *e, int *gState)
 
         if (e->type == SDL_KEYDOWN)
             switch (e->key.keysym.sym) {
-                case SDLK_q:
-                    *gState = G_QUIT;
-                    break;
-                case SDLK_RETURN:
-                case SDLK_KP_ENTER:
-                    *gState = G_LVL_MENU;
-                    freeTexture(&gStartTexture);
-                    break;
-                default:
-                    break;
+            case SDLK_q:
+                *gState = G_QUIT;
+                break;
+            case SDLK_RETURN:
+            case SDLK_KP_ENTER:
+                *gState = G_LVL_MENU;
+                freeTexture(&gStartTexture);
+                break;
+            default:
+                break;
             }
     }
 
@@ -173,8 +186,9 @@ void handleGetLvl(int *gState)
 void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
 {
     char text[] = "Level Menu";
-    int text_len = (int) strlen(text);
-    SDL_Rect textRect = {(SCREEN_WIDTH - text_len * LVL_NUMBER_SIZE) / 2, MENU_POSY, LVL_NUMBER_SIZE * text_len, LVL_NUMBER_SIZE};
+    int text_len = (int)strlen(text);
+    SDL_Rect textRect = {(SCREEN_WIDTH - text_len * LVL_NUMBER_SIZE) / 2, MENU_POSY, LVL_NUMBER_SIZE * text_len,
+                         LVL_NUMBER_SIZE};
     renderText(text, textRect, lazy_font, 0, gRenderer);
 
     while (SDL_PollEvent(e) != 0) {
@@ -195,31 +209,31 @@ void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
 
         if (e->type == SDL_KEYDOWN)
             switch (e->key.keysym.sym) {
-                case SDLK_q:
-                    *gState = G_QUIT;
-                    break;
-                case SDLK_RETURN:
-                case SDLK_KP_ENTER:
-                    handleGetLvl(gState);
-                    break;
-                case SDLK_UP:
-                    if (*lvl_n > LVL_MENU_NCOLS)
-                        *lvl_n -= LVL_MENU_NCOLS;
-                    break;
-                case SDLK_DOWN:
-                    if (*lvl_n + LVL_MENU_NCOLS <= N_LEVELS)
-                        *lvl_n += LVL_MENU_NCOLS;
-                    break;
-                case SDLK_LEFT:
-                    if (*lvl_n > 1)
-                        *lvl_n -= 1;
-                    break;
-                case SDLK_RIGHT:
-                    if (*lvl_n < N_LEVELS)
-                        *lvl_n += 1;
-                    break;
-                default:
-                    break;
+            case SDLK_q:
+                *gState = G_QUIT;
+                break;
+            case SDLK_RETURN:
+            case SDLK_KP_ENTER:
+                handleGetLvl(gState);
+                break;
+            case SDLK_UP:
+                if (*lvl_n > LVL_MENU_NCOLS)
+                    *lvl_n -= LVL_MENU_NCOLS;
+                break;
+            case SDLK_DOWN:
+                if (*lvl_n + LVL_MENU_NCOLS <= N_LEVELS)
+                    *lvl_n += LVL_MENU_NCOLS;
+                break;
+            case SDLK_LEFT:
+                if (*lvl_n > 1)
+                    *lvl_n -= 1;
+                break;
+            case SDLK_RIGHT:
+                if (*lvl_n < N_LEVELS)
+                    *lvl_n += 1;
+                break;
+            default:
+                break;
             }
     }
 
@@ -228,8 +242,10 @@ void renderLvlMenu(SDL_Event *e, int *lvl_n, int *gState)
 
 int onLevelNumber(int x, int y)
 {
-    if ((y - MENU_OFFSET) % (LVL_MENU_OFFSETH + LVL_NUMBER_SIZE) >= LVL_MENU_OFFSETH && x % (LVL_MENU_OFFSETW + LVL_NUMBER_SIZE) >= LVL_MENU_OFFSETW)
-        return (y - MENU_OFFSET) / (LVL_MENU_OFFSETH + LVL_NUMBER_SIZE) * LVL_MENU_NCOLS + x / (LVL_MENU_OFFSETW + LVL_NUMBER_SIZE) + 1;
+    if ((y - MENU_OFFSET) % (LVL_MENU_OFFSETH + LVL_NUMBER_SIZE) >= LVL_MENU_OFFSETH &&
+        x % (LVL_MENU_OFFSETW + LVL_NUMBER_SIZE) >= LVL_MENU_OFFSETW)
+        return (y - MENU_OFFSET) / (LVL_MENU_OFFSETH + LVL_NUMBER_SIZE) * LVL_MENU_NCOLS +
+               x / (LVL_MENU_OFFSETW + LVL_NUMBER_SIZE) + 1;
     else
         return 0;
 }
@@ -247,8 +263,7 @@ void renderLvlItems(int lvl_n)
             if (i * LVL_MENU_NCOLS + j + 1 == lvl_n) {
                 SDL_SetRenderDrawColor(gRenderer, 0x0, 0x0, 0x0, 0x0);
                 SDL_Rect dst = {textRect.x - (LVL_POINTER_W - LVL_NUMBER_SIZE) / 2,
-                                textRect.y - (LVL_POINTER_H - LVL_NUMBER_SIZE) / 2,
-                                LVL_POINTER_W, LVL_POINTER_H};
+                                textRect.y - (LVL_POINTER_H - LVL_NUMBER_SIZE) / 2, LVL_POINTER_W, LVL_POINTER_H};
                 SDL_RenderDrawRect(gRenderer, &dst);
             }
 
@@ -261,8 +276,8 @@ void renderLvlItems(int lvl_n)
 
 int inBorders(int curPos_i, int curPos_j, int curVel_i, int curVel_j)
 {
-    return curPos_i + curVel_i > 0 && curPos_i + curVel_i < NTILES_WIDTH &&
-           curPos_j + curVel_j > 0 && curPos_j + curVel_j < NTILES_HEIGHT;
+    return curPos_i + curVel_i > 0 && curPos_i + curVel_i < NTILES_WIDTH && curPos_j + curVel_j > 0 &&
+           curPos_j + curVel_j < NTILES_HEIGHT;
 }
 
 int canMove(int subFieldType)
@@ -285,15 +300,19 @@ void renderLvlInfo(int lvl_n, int volume, int n_steps)
 
     renderTexture(&gIconTextures, I_MENU_POSX, 0, &IconT[I_MENU], gRenderer);
     renderTexture(&gIconTextures, I_RESTART_POSX, 0, &IconT[I_RESTART], gRenderer);
-    renderTexture(&gIconTextures, I_SOUND_POSX, 0, &IconT[I_SOUND], gRenderer);
 
-    SDL_SetRenderDrawColor(gRenderer, 0x0, 0x0, 0x0, 0x0);
-    SDL_RenderDrawLine(gRenderer, VOLUME_LINE_STRT, TILE_SIZE / 2, VOLUME_LINE_END, TILE_SIZE / 2);
+    if (volume < 1e-6) {
+        renderTexture(&gIconTextures, I_SOUND_POSX, 0, &IconT[I_SOUND_OFF], gRenderer);
+    }
+    else {
+        renderTexture(&gIconTextures, I_SOUND_POSX, 0, &IconT[I_SOUND_ON], gRenderer);
+    }
+
+    renderTexture(&gVolumeLineTexture, I_VOLUME_LINE_POSX, 0, &IconT[I_VOLUME_LINE], gRenderer);
     renderTexture(&gIconTextures,
-                  VOLUME_LINE_STRT + (int) (volume / 100.0 * (VOLUME_LINE_END - VOLUME_LINE_STRT)) - TILE_SIZE / 2, 0,
-                  &IconT[I_VOLUME], gRenderer);
+                  VOLUME_LINE_STRT + (int)(volume / 100.0 * (VOLUME_LINE_END - VOLUME_LINE_STRT)) - TILE_SIZE / 2, 0,
+                  &IconT[I_VOLUME_POINT], gRenderer);
 }
-
 
 void changeSoundVolume(int *volume, int x)
 {
@@ -302,7 +321,7 @@ void changeSoundVolume(int *volume, int x)
         *volume = 0;
     else if (*volume > 100)
         *volume = 100;
-    Mix_VolumeMusic((int) (*volume * VOLUME_CALIBRATION * MIX_MAX_VOLUME / 100));
+    Mix_VolumeMusic((int)(*volume * VOLUME_CALIBRATION * MIX_MAX_VOLUME / 100));
 }
 
 void handleMouseButton(SDL_Event *e, int *volume, int *gState)
@@ -322,14 +341,14 @@ void handleMouseButton(SDL_Event *e, int *volume, int *gState)
                     if (*volume != 0) {
                         comf_volume = *volume;
                         *volume = 0;
-                    } else
+                    }
+                    else
                         *volume = comf_volume;
-                    Mix_VolumeMusic((int) (*volume * VOLUME_CALIBRATION * MIX_MAX_VOLUME / 100));
+                    Mix_VolumeMusic((int)(*volume * VOLUME_CALIBRATION * MIX_MAX_VOLUME / 100));
                 }
             }
 
-            if (y > DOT_OFFSET && y < TILE_SIZE - DOT_OFFSET &&
-                x >= VOLUME_LINE_STRT && x <= VOLUME_LINE_END) {
+            if (y > DOT_OFFSET && y < TILE_SIZE - DOT_OFFSET && x >= VOLUME_LINE_STRT && x <= VOLUME_LINE_END) {
                 dot_pressed = 1;
                 changeSoundVolume(volume, x);
             }
@@ -348,6 +367,7 @@ void handleMouseButton(SDL_Event *e, int *volume, int *gState)
 void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *volume, int *n_steps, int *lvl_n, int *gState)
 {
     int vel_i = 0, vel_j = 0;
+    static int hero_tile = 0;
 
     while (SDL_PollEvent(e) != 0) {
         if (e->type == SDL_QUIT) {
@@ -358,38 +378,40 @@ void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *volume, in
         handleMouseButton(e, volume, gState);
         if (e->type == SDL_KEYDOWN)
             switch (e->key.keysym.sym) {
-                case SDLK_RETURN:
-                case SDLK_KP_ENTER:
-                case SDLK_r:
-                    handleGetLvl(gState);
-                    break;
-                case SDLK_q:
-                    *gState = G_QUIT;
-                    break;
-                case SDLK_m:
-                    *gState = G_LVL_MENU;
-                case SDLK_UP:
-                    vel_i = -1;
-                    vel_j = 0;
-                    break;
-                case SDLK_DOWN:
-                    vel_i = 1;
-                    vel_j = 0;
-                    break;
-                case SDLK_LEFT:
-                    *hState = H_LEFT;
-                    vel_i = 0;
-                    vel_j = -1;
-                    break;
-                case SDLK_RIGHT:
-                    *hState = H_RIGHT;
-                    vel_i = 0;
-                    vel_j = 1;
-                    break;
-                default:
-                    vel_i = 0;
-                    vel_j = 0;
-                    break;
+            case SDLK_RETURN:
+            case SDLK_KP_ENTER:
+            case SDLK_r:
+                handleGetLvl(gState);
+                break;
+            case SDLK_q:
+                *gState = G_QUIT;
+                break;
+            case SDLK_m:
+                *gState = G_LVL_MENU;
+            case SDLK_UP:
+                *hState = H_UP;
+                vel_i = -1;
+                vel_j = 0;
+                break;
+            case SDLK_DOWN:
+                *hState = H_DOWN;
+                vel_i = 1;
+                vel_j = 0;
+                break;
+            case SDLK_LEFT:
+                *hState = H_LEFT;
+                vel_i = 0;
+                vel_j = -1;
+                break;
+            case SDLK_RIGHT:
+                *hState = H_RIGHT;
+                vel_i = 0;
+                vel_j = 1;
+                break;
+            default:
+                vel_i = 0;
+                vel_j = 0;
+                break;
             }
     }
 
@@ -399,9 +421,10 @@ void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *volume, in
             cur_level->hero.i += vel_i;
             cur_level->hero.j += vel_j;
             ++*n_steps;
-        } else if (inBorders(cur_level->hero.i, cur_level->hero.j, vel_i * 2, vel_j * 2) &&
-                   isBox(cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j]) &&
-                   canMove(cur_level->field[cur_level->hero.i + vel_i * 2][cur_level->hero.j + vel_j * 2])) {
+        }
+        else if (inBorders(cur_level->hero.i, cur_level->hero.j, vel_i * 2, vel_j * 2) &&
+                 isBox(cur_level->field[cur_level->hero.i + vel_i][cur_level->hero.j + vel_j]) &&
+                 canMove(cur_level->field[cur_level->hero.i + vel_i * 2][cur_level->hero.j + vel_j * 2])) {
             cur_level->hero.i += vel_i;
             cur_level->hero.j += vel_j;
             ++*n_steps;
@@ -422,21 +445,24 @@ void renderLvl(SDL_Event *e, struct lvl *cur_level, int *hState, int *volume, in
     if (progress == cur_level->n_boxes) {
         if (Mix_PlayingMusic() && gMusic.MusicState == M_LEVEL) {
             playMusic(M_SUCCESS_S, 0, gMusic.success_start);
-        } else if (!Mix_PlayingMusic() && gMusic.MusicState == M_SUCCESS_S) {
+        }
+        else if (!Mix_PlayingMusic() && gMusic.MusicState == M_SUCCESS_S) {
             *hState = H_SUCCESS;
             playMusic(M_SUCCESS_E, 0, gMusic.success_end);
-        } else if (!Mix_PlayingMusic() && gMusic.MusicState == M_SUCCESS_E) {
+        }
+        else if (!Mix_PlayingMusic() && gMusic.MusicState == M_SUCCESS_E) {
             *hState = H_SUCCESS;
             handleGetLvl(gState);
             ++*lvl_n;
-        } else if (Mix_PlayingMusic() && gMusic.MusicState == M_SUCCESS_E)
+        }
+        else if (Mix_PlayingMusic() && gMusic.MusicState == M_SUCCESS_E)
             *hState = H_SUCCESS;
     }
 
-    renderTexture(&gHeroTextures,
-                  cur_level->hero.j * STEP + cur_level->OffsetW,
-                  cur_level->hero.i * STEP + cur_level->OffsetH,
-                  &HeroT[*hState], gRenderer);
+    renderTexture(&gHeroTextures[*hState], cur_level->hero.j * STEP + cur_level->OffsetW,
+                  cur_level->hero.i * STEP + cur_level->OffsetH, &HeroT[*hState][hero_tile], gRenderer);
+
+    hero_tile = (hero_tile + 1) % N_TILE_CHANGES;
     renderLvlInfo(*lvl_n, *volume, *n_steps);
 }
 
@@ -471,10 +497,8 @@ int init()
     }
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-    gWindow = SDL_CreateWindow("Boxes Game",
-                               SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                               SCREEN_WIDTH, SCREEN_HEIGHT,
-                               SDL_WINDOW_SHOWN);
+    gWindow = SDL_CreateWindow("Boxes Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH,
+                               SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     if (gWindow == NULL) {
         printf("SDL_WINDOW_ERR: %s\n", SDL_GetError());
         return SDL_WINDOW_ERR;
@@ -528,18 +552,32 @@ int loadMedia()
     }
 
     int rc;
-    if ((rc = loadTextureFromFile(&gStartTexture, "./images/start.png", gRenderer)) != 0)
+    if ((rc = loadTextureFromFile(&gStartTexture, "./images/Boxxle_Cover.jpg", gRenderer)) != 0)
         return rc;
 
     gStartTexture.Height = START_SIZE;
     gStartTexture.Width = START_SIZE;
 
-    if ((rc = loadTextureFromFile(&gHeroTextures, "./images/hero.png", gRenderer)) != 0)
+    if ((rc = loadTextureFromFile(&gHeroTextures[H_RIGHT], "./images/hero_right.png", gRenderer)) != 0)
         return rc;
 
-    setTextures(HeroT, N_HERO_TYPES, HERO_SIZE, HERO_SIZE);
-    gHeroTextures.Height = TILE_SIZE;
-    gHeroTextures.Width = TILE_SIZE;
+    if ((rc = loadTextureFromFile(&gHeroTextures[H_LEFT], "./images/hero_left.png", gRenderer)) != 0)
+        return rc;
+
+    if ((rc = loadTextureFromFile(&gHeroTextures[H_DOWN], "./images/hero_down.png", gRenderer)) != 0)
+        return rc;
+
+    if ((rc = loadTextureFromFile(&gHeroTextures[H_UP], "./images/hero_up.png", gRenderer)) != 0)
+        return rc;
+
+    if ((rc = loadTextureFromFile(&gHeroTextures[H_SUCCESS], "./images/hero_success.png", gRenderer)) != 0)
+        return rc;
+
+    for (int i = 0; i < N_HERO_TYPES; ++i) {
+        setTextures(HeroT[i], N_TILE_CHANGES, HERO_SIZE, HERO_SIZE);
+        gHeroTextures[i].Height = HERO_SIZE;
+        gHeroTextures[i].Width = HERO_SIZE;
+    }
 
     if ((rc = loadTextureFromFile(&gFieldTextures, "./images/fields.png", gRenderer)) != 0)
         return rc;
@@ -551,11 +589,22 @@ int loadMedia()
     if ((rc = loadTextureFromFile(&gIconTextures, "./images/icons.png", gRenderer)) != 0)
         return rc;
 
-    setTextures(IconT, N_ICON_TYPES, TILE_SIZE, TILE_SIZE);
+    setTextures(IconT, N_ICON_TYPES - 1, TILE_SIZE, TILE_SIZE);
     gIconTextures.Height = TILE_SIZE;
     gIconTextures.Width = TILE_SIZE;
 
-    lazy_font = TTF_OpenFont("./fonts/lazy.ttf", 24);
+    if ((rc = loadTextureFromFile(&gVolumeLineTexture, "./images/volume_line.png", gRenderer)) != 0)
+        return rc;
+
+    IconT[I_VOLUME_LINE].x = 0;
+    IconT[I_VOLUME_LINE].y = 0;
+    IconT[I_VOLUME_LINE].w = I_VOLUME_LINE_MULT * TILE_SIZE;
+    IconT[I_VOLUME_LINE].h = TILE_SIZE;
+
+    gVolumeLineTexture.Height = TILE_SIZE;
+    gVolumeLineTexture.Width = I_VOLUME_LINE_MULT * TILE_SIZE;
+
+    lazy_font = TTF_OpenFont("./fonts/steelpla.ttf", 24);
     return 0;
 }
 
