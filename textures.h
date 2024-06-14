@@ -6,7 +6,8 @@ typedef struct SDL_Texture SDL_Texture;
 typedef struct SDL_Renderer SDL_Renderer;
 typedef struct SDL_Rect SDL_Rect;
 
-struct LTexture {
+struct LTexture
+{
     SDL_Texture *Texture;
     int Width;
     int Height;

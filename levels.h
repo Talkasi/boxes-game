@@ -3,7 +3,8 @@
 #include "config.h"
 #include <inttypes.h>
 
-enum field {
+enum field
+{
     EMPTY,
     WALL,
     N_BOX,
@@ -14,12 +15,14 @@ enum field {
 
 typedef uint8_t lvl_field[NTILES_HEIGHT][NTILES_WIDTH];
 
-struct point {
+struct point
+{
     int i;
     int j;
 };
 
-struct lvl {
+struct lvl
+{
     lvl_field field;
     struct point hero;
     int n_boxes;
